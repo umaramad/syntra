@@ -6,6 +6,7 @@ const API = {
   team: "/api/team",
   reminders: "/api/reminders",
   mcp: "/api/mcp",
+  profile: "/api/profile",
 };
 
 const {
@@ -23,16 +24,20 @@ const NOTE_TOOLS = new Set(["create_note", "list_notes"]);
 const REMINDER_POLL_MS = 60000;
 const SIDEBAR_STORAGE_KEY = "syntra-sidebar-collapsed";
 
+const STANDUP_STATUSES = ["pending", "in_progress", "done", "cancelled"];
+
 let taskCache = [];
 let taskGroupCache = [];
 let archivedGroupCache = [];
 const expandedTaskGroups = new Set();
 const expandedArchivedGroups = new Set();
 const expandedTaskComments = new Set();
+const standupBodyCollapsed = new Set();
 const taskCommentsCache = {};
 let noteCache = [];
 let teamCache = [];
 let reminderCache = [];
+let profileCache = null;
 let searchQuery = "";
 const taskFilters = { status: "", priority: "", assignee: "" };
 const notifiedReminderIds = new Set();
@@ -144,6 +149,113 @@ function initConfirmModal() {
   });
 }
 
+function getProfileInitials(name) {
+  const parts = String(name || "User").trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function renderProfileHeader() {
+  const profile = profileCache || { display_name: "User" };
+  const avatarEl = document.getElementById("profile-avatar");
+  const nameEl = document.getElementById("profile-name");
+  if (avatarEl) avatarEl.textContent = getProfileInitials(profile.display_name);
+  if (nameEl) nameEl.textContent = profile.display_name || "User";
+}
+
+function populateProfileTeamSelect(selectedId) {
+  const select = document.getElementById("profile-team-member");
+  if (!select) return;
+  const options = ['<option value="">None</option>'];
+  for (const member of teamCache) {
+    const selected = String(member.id) === String(selectedId ?? "") ? " selected" : "";
+    options.push(`<option value="${member.id}"${selected}>${escapeHtml(member.name)}</option>`);
+  }
+  select.innerHTML = options.join("");
+}
+
+function closeProfileModal() {
+  const modal = document.getElementById("profile-modal");
+  if (!modal) return;
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+}
+
+function openProfileModal() {
+  const modal = document.getElementById("profile-modal");
+  const profile = profileCache || { display_name: "User", email: "", role: "", team_member_id: null };
+  if (!modal) return;
+
+  populateProfileTeamSelect(profile.team_member_id);
+  document.getElementById("profile-display-name").value = profile.display_name || "";
+  document.getElementById("profile-email").value = profile.email || "";
+  document.getElementById("profile-role").value = profile.role || "";
+  document.getElementById("profile-team-member").value = profile.team_member_id ? String(profile.team_member_id) : "";
+
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  document.getElementById("profile-display-name")?.focus();
+}
+
+async function loadProfile() {
+  profileCache = await request(API.profile);
+  renderProfileHeader();
+  return profileCache;
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+  const displayName = document.getElementById("profile-display-name").value.trim();
+  const email = document.getElementById("profile-email").value.trim();
+  const role = document.getElementById("profile-role").value.trim();
+  const teamMemberId = document.getElementById("profile-team-member").value;
+
+  try {
+    profileCache = await request(API.profile, {
+      method: "PUT",
+      body: JSON.stringify({
+        display_name: displayName,
+        email: email || null,
+        role: role || null,
+        team_member_id: teamMemberId ? parseInt(teamMemberId, 10) : null,
+      }),
+    });
+    renderProfileHeader();
+    closeProfileModal();
+    toast("Profile saved");
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+function initProfileModal() {
+  const modal = document.getElementById("profile-modal");
+  const btn = document.getElementById("profile-btn");
+  const form = document.getElementById("profile-form");
+  const cancelBtn = document.getElementById("profile-modal-cancel");
+  if (!modal || modal.dataset.bound === "true") return;
+  modal.dataset.bound = "true";
+
+  btn?.addEventListener("click", () => openProfileModal());
+  cancelBtn?.addEventListener("click", () => closeProfileModal());
+  form?.addEventListener("submit", (event) => saveProfile(event));
+
+  modal.querySelectorAll("[data-profile-dismiss]").forEach((el) => {
+    el.addEventListener("click", () => closeProfileModal());
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (modal.hidden) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeProfileModal();
+    }
+  });
+}
+
 function escapeHtml(str) {
   const div = document.createElement("div");
   div.textContent = str || "";
@@ -177,7 +289,10 @@ function taskMatchesSearch(task, query) {
     return true;
   }
   const comments = taskCommentsCache[task.id] || [];
-  return comments.some((entry) => String(entry.comment || "").toLowerCase().includes(query));
+  return comments.some((entry) =>
+    [entry.comment, entry.assignee_name, entry.status, entry.author_name]
+      .some((field) => String(field || "").toLowerCase().includes(query))
+  );
 }
 
 function noteMatchesSearch(note, query) {
@@ -429,7 +544,12 @@ async function ensureTaskComments(taskId) {
 function formatCommentsPlain(comments) {
   if (!comments?.length) return "—";
   return comments
-    .map((entry) => `${formatDateTime(entry.created_at)}: ${entry.comment}`)
+    .map((entry) => {
+      const member = entry.assignee_name || "—";
+      const status = formatTaskStatus(entry.status);
+      const time = formatDateTime(entry.created_at);
+      return `${member} | ${status} | ${time}: ${entry.comment}`;
+    })
     .join("\n");
 }
 
@@ -439,10 +559,39 @@ function formatCommentsHtml(comments) {
     .map(
       (entry) =>
         `<div style="margin:0 0 6px 0;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">` +
+        `<span style="font-weight:600;color:#374151;">${escapeHtml(entry.assignee_name || "—")}</span> · ` +
+        `<span style="color:#6b7280;">${escapeHtml(formatTaskStatus(entry.status))}</span> · ` +
         `<span style="color:#6b7280;font-size:10pt;">${escapeHtml(formatDateTime(entry.created_at))}</span><br/>` +
         `<span style="color:#374151;">${escapeHtml(entry.comment)}</span></div>`
     )
     .join("");
+}
+
+function renderStandupStatusOptions(selected = "in_progress") {
+  return STANDUP_STATUSES.map(
+    (status) =>
+      `<option value="${status}"${status === selected ? " selected" : ""}>${escapeHtml(formatTaskStatus(status))}</option>`
+  ).join("");
+}
+
+function renderStandupMemberOptions(selectedId) {
+  const options = ['<option value="">Select member</option>'];
+  for (const member of teamCache) {
+    const selected = String(member.id) === String(selectedId ?? "") ? " selected" : "";
+    options.push(`<option value="${member.id}"${selected}>${escapeHtml(member.name)}</option>`);
+  }
+  return options.join("");
+}
+
+function getDefaultStandupMemberId(task) {
+  if (profileCache?.team_member_id) return profileCache.team_member_id;
+  if (task?.assigned_to) return task.assigned_to;
+  return "";
+}
+
+function updateStandupPanelHeader(taskId, count) {
+  const titleEl = document.querySelector(`#task-comments-${taskId} .standup-panel-title`);
+  if (titleEl) titleEl.textContent = `Standup updates (${count})`;
 }
 
 function buildGroupTasksClipboardPlain(groupName, tasks, commentsByTaskId) {
@@ -589,7 +738,7 @@ function handleTaskGroupCopyClick(button) {
 }
 
 function updateAssigneeOptions(members) {
-  const options =
+  const assignOptions =
     '<option value="">Assign to team member</option>' +
     members.map((member) =>
       `<option value="${member.id}">${escapeHtml(member.name)}</option>`
@@ -597,8 +746,17 @@ function updateAssigneeOptions(members) {
 
   ["reminder-assignee", "reminder-edit-assignee", "task-assignee", "task-edit-assignee"].forEach((id) => {
     const select = document.getElementById(id);
-    if (select) select.innerHTML = options;
+    if (select) select.innerHTML = assignOptions;
   });
+
+  const standupEditMember = document.getElementById("standup-edit-member");
+  if (standupEditMember) {
+    standupEditMember.innerHTML =
+      '<option value="">Select member</option>' +
+      members.map((member) =>
+        `<option value="${member.id}">${escapeHtml(member.name)}</option>`
+      ).join("");
+  }
 }
 
 function updateGroupOptions(groups) {
@@ -921,10 +1079,12 @@ function bindArchiveGroupEvents() {
 
 function renderTaskRow(task) {
   const commentsOpen = expandedTaskComments.has(task.id);
+  const bodyCollapsed = standupBodyCollapsed.has(task.id);
   const commentCount = task.comment_count || 0;
   const isDone = task.status === "done";
   const query = normalizeSearchQuery(searchQuery);
   const isSearchMatch = query && taskMatchesSearch(task, query);
+  const defaultMemberId = getDefaultStandupMemberId(task);
 
   return `
     <tr class="editable-row${isDone ? " is-done" : ""}${isSearchMatch ? " search-match" : ""}" data-id="${task.id}" title="Double-click to edit">
@@ -937,7 +1097,7 @@ function renderTaskRow(task) {
       <td>${escapeHtml(task.assignee_name || "—")}</td>
       <td>${renderDueDateCell(task)}</td>
       <td class="actions-cell">
-        <button type="button" class="task-comments-btn" data-id="${task.id}" aria-label="View comments" title="Comments">
+        <button type="button" class="task-comments-btn" data-id="${task.id}" aria-label="View standup updates" title="Standup updates">
           <span class="task-comments-icon" aria-hidden="true">💬</span>
           <span class="task-comments-count" id="task-comment-count-${task.id}">${commentCount}</span>
         </button>
@@ -946,14 +1106,28 @@ function renderTaskRow(task) {
     </tr>
     <tr class="task-comments-row" id="task-comments-${task.id}"${commentsOpen ? "" : " hidden"}>
       <td colspan="7">
-        <div class="task-comments-panel" data-task-id="${task.id}">
-          <div class="task-comments-list" id="task-comments-list-${task.id}">
-            ${commentsOpen ? '<p class="empty">Loading comments...</p>' : ""}
+        <div class="task-comments-panel standup-panel" data-task-id="${task.id}">
+          <div class="standup-panel-header">
+            <button type="button" class="standup-panel-toggle" data-task-id="${task.id}" aria-expanded="${String(!bodyCollapsed)}">
+              <span class="standup-panel-title">Standup updates (${commentCount})</span>
+              <span class="standup-panel-chevron${bodyCollapsed ? " is-collapsed" : ""}" aria-hidden="true">▼</span>
+            </button>
           </div>
-          <form class="task-comment-form" data-task-id="${task.id}">
-            <input type="text" class="task-comment-input" placeholder="Add a progress comment..." required>
-            <button type="submit" class="inline-submit">Post</button>
-          </form>
+          <div class="standup-panel-body" id="standup-panel-body-${task.id}"${bodyCollapsed ? " hidden" : ""}>
+            <div class="standup-table-wrap" id="task-comments-list-${task.id}">
+              ${commentsOpen ? '<p class="standup-empty">Loading updates...</p>' : ""}
+            </div>
+            <form class="standup-form task-comment-form" data-task-id="${task.id}">
+              <select class="standup-member-select" name="assigned_to" required aria-label="Team member">
+                ${renderStandupMemberOptions(defaultMemberId)}
+              </select>
+              <select class="standup-status-select" name="status" aria-label="Status">
+                ${renderStandupStatusOptions("in_progress")}
+              </select>
+              <input type="text" class="standup-comment-input" name="comment" placeholder="Add standup update..." required>
+              <button type="submit" class="inline-submit">Post</button>
+            </form>
+          </div>
         </div>
       </td>
     </tr>`;
@@ -977,21 +1151,56 @@ function renderTaskCommentsList(taskId, comments) {
   const listEl = document.getElementById(`task-comments-list-${taskId}`);
   if (!listEl) return;
 
+  updateStandupPanelHeader(taskId, comments.length);
+
   if (!comments.length) {
-    listEl.innerHTML = '<p class="empty">No comments yet. Add one below.</p>';
+    listEl.innerHTML = '<p class="standup-empty">No standup updates yet. Add one below.</p>';
     return;
   }
 
-  listEl.innerHTML = comments.map((entry) => `
-    <div class="task-comment-item">
-      <div class="task-comment-meta">
-        <span class="task-comment-author">${escapeHtml(entry.author_name || "User")}</span>
-        <span class="task-comment-time">${escapeHtml(formatDateTime(entry.created_at))}</span>
-        <button type="button" class="task-comment-delete" data-task-id="${taskId}" data-id="${entry.id}" aria-label="Delete comment" title="Delete">×</button>
-      </div>
-      <p class="task-comment-text">${escapeHtml(entry.comment)}</p>
-    </div>
-  `).join("");
+  listEl.innerHTML = `
+    <table class="standup-table">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Status</th>
+          <th>Update</th>
+          <th>Time</th>
+          <th class="standup-actions-cell"></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${comments.map((entry) => `
+          <tr class="editable-standup-row" data-task-id="${taskId}" data-id="${entry.id}" title="Double-click to edit">
+            <td>${escapeHtml(entry.assignee_name || "—")}</td>
+            <td><span class="status status-${entry.status || "in_progress"}">${escapeHtml(formatTaskStatus(entry.status))}</span></td>
+            <td class="standup-update-cell">${escapeHtml(entry.comment)}</td>
+            <td class="standup-time-cell">${escapeHtml(formatDateTime(entry.created_at))}</td>
+            <td class="standup-actions-cell">
+              <button type="button" class="task-comment-delete" data-task-id="${taskId}" data-id="${entry.id}" aria-label="Delete update" title="Delete">×</button>
+            </td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>`;
+}
+
+function toggleStandupBody(taskId) {
+  const body = document.getElementById(`standup-panel-body-${taskId}`);
+  const toggle = document.querySelector(`.standup-panel-toggle[data-task-id="${taskId}"]`);
+  const chevron = toggle?.querySelector(".standup-panel-chevron");
+  if (!body) return;
+
+  const willCollapse = !body.hidden;
+  body.hidden = willCollapse;
+  if (willCollapse) {
+    standupBodyCollapsed.add(taskId);
+  } else {
+    standupBodyCollapsed.delete(taskId);
+  }
+
+  if (toggle) toggle.setAttribute("aria-expanded", String(!willCollapse));
+  if (chevron) chevron.classList.toggle("is-collapsed", willCollapse);
 }
 
 function updateTaskCommentCount(taskId, count) {
@@ -1014,25 +1223,37 @@ async function toggleTaskComments(taskId) {
 
   row.hidden = false;
   expandedTaskComments.add(taskId);
+  standupBodyCollapsed.delete(taskId);
+  const body = document.getElementById(`standup-panel-body-${taskId}`);
+  const toggle = document.querySelector(`.standup-panel-toggle[data-task-id="${taskId}"]`);
+  const chevron = toggle?.querySelector(".standup-panel-chevron");
+  if (body) body.hidden = false;
+  if (toggle) toggle.setAttribute("aria-expanded", "true");
+  if (chevron) chevron.classList.remove("is-collapsed");
   await loadTaskComments(taskId);
 }
 
-async function addTaskComment(taskId, comment) {
+async function addTaskComment(taskId, payload) {
   const entry = await request(`${API.tasks}/${taskId}/comments`, {
     method: "POST",
-    body: JSON.stringify({ comment }),
+    body: JSON.stringify({
+      comment: payload.comment,
+      status: payload.status || "in_progress",
+      assigned_to: payload.assigned_to,
+      author_name: profileCache?.display_name || "User",
+    }),
   });
   taskCommentsCache[taskId] = [...(taskCommentsCache[taskId] || []), entry];
   renderTaskCommentsList(taskId, taskCommentsCache[taskId]);
   updateTaskCommentCount(taskId, taskCommentsCache[taskId].length);
-  toast("Comment added");
+  toast("Standup update posted");
   return entry;
 }
 
 async function deleteTaskComment(taskId, commentId) {
   const confirmed = await confirmDialog({
-    title: "Delete comment?",
-    message: "This comment will be permanently removed.",
+    title: "Delete update?",
+    message: "This standup update will be permanently removed.",
     confirmText: "Delete",
     variant: "danger",
   });
@@ -1042,7 +1263,26 @@ async function deleteTaskComment(taskId, commentId) {
   taskCommentsCache[taskId] = (taskCommentsCache[taskId] || []).filter((item) => item.id !== commentId);
   renderTaskCommentsList(taskId, taskCommentsCache[taskId]);
   updateTaskCommentCount(taskId, taskCommentsCache[taskId].length);
-  toast("Comment deleted");
+  closeCreatePanel("standup-edit-panel");
+  toast("Standup update deleted");
+}
+
+async function updateStandupComment(taskId, commentId, payload) {
+  const entry = await request(`${API.tasks}/${taskId}/comments/${commentId}`, {
+    method: "PUT",
+    body: JSON.stringify({
+      comment: payload.comment,
+      status: payload.status || "in_progress",
+      assigned_to: payload.assigned_to,
+    }),
+  });
+  taskCommentsCache[taskId] = (taskCommentsCache[taskId] || []).map((item) =>
+    item.id === commentId ? entry : item
+  );
+  renderTaskCommentsList(taskId, taskCommentsCache[taskId]);
+  closeCreatePanel("standup-edit-panel");
+  toast("Standup update saved");
+  return entry;
 }
 
 function updateDashboardStats(tasks, members) {
@@ -1149,8 +1389,24 @@ function highlightRow(id) {
   document.querySelectorAll(".editable-row.row-active").forEach((row) => {
     row.classList.remove("row-active");
   });
+  document.querySelectorAll(".editable-standup-row.standup-row-active").forEach((row) => {
+    row.classList.remove("standup-row-active");
+  });
   const row = document.querySelector(`.editable-row[data-id="${id}"]`);
   if (row) row.classList.add("row-active");
+}
+
+function highlightStandupRow(taskId, commentId) {
+  document.querySelectorAll(".editable-row.row-active").forEach((row) => {
+    row.classList.remove("row-active");
+  });
+  document.querySelectorAll(".editable-standup-row.standup-row-active").forEach((row) => {
+    row.classList.remove("standup-row-active");
+  });
+  const row = document.querySelector(
+    `.editable-standup-row[data-task-id="${taskId}"][data-id="${commentId}"]`
+  );
+  if (row) row.classList.add("standup-row-active");
 }
 
 function openEditPanel(panelId, focusId) {
@@ -1213,6 +1469,7 @@ const DELETE_ICON = `
 
 function openTaskEdit(task) {
   closeCreatePanel("task-create-panel");
+  closeCreatePanel("standup-edit-panel");
   document.getElementById("task-edit-id").value = task.id;
   document.getElementById("task-edit-title").value = task.title || "";
   document.getElementById("task-edit-group").value = task.group_id || "";
@@ -1222,6 +1479,18 @@ function openTaskEdit(task) {
   document.getElementById("task-edit-due").value = formatDateInput(task.due_date);
   highlightRow(task.id);
   openEditPanel("task-edit-panel", "task-edit-title");
+}
+
+function openStandupEdit(taskId, comment) {
+  closeCreatePanel("task-create-panel");
+  closeCreatePanel("task-edit-panel");
+  document.getElementById("standup-edit-task-id").value = taskId;
+  document.getElementById("standup-edit-id").value = comment.id;
+  document.getElementById("standup-edit-member").value = comment.assigned_to || "";
+  document.getElementById("standup-edit-status").value = comment.status || "in_progress";
+  document.getElementById("standup-edit-comment").value = comment.comment || "";
+  highlightStandupRow(taskId, comment.id);
+  openEditPanel("standup-edit-panel", "standup-edit-comment");
 }
 
 function openNoteEdit(note) {
@@ -1377,13 +1646,31 @@ function bindTaskListEvents() {
         parseInt(deleteCommentBtn.dataset.taskId, 10),
         parseInt(deleteCommentBtn.dataset.id, 10)
       ).catch((err) => toast(err.message, true));
+      return;
+    }
+
+    const standupToggle = event.target.closest(".standup-panel-toggle");
+    if (standupToggle) {
+      event.stopPropagation();
+      toggleStandupBody(parseInt(standupToggle.dataset.taskId, 10));
     }
   });
 
   container.addEventListener("dblclick", (event) => {
-    if (event.target.closest(".row-delete-btn, .task-done-toggle, .task-comments-btn, .task-comment-delete, .task-comment-form")) {
+    if (event.target.closest(".row-delete-btn, .task-done-toggle, .task-comments-btn, .task-comment-delete, .task-comment-form, .standup-panel-toggle")) {
       return;
     }
+
+    const standupRow = event.target.closest(".editable-standup-row");
+    if (standupRow) {
+      event.stopPropagation();
+      const taskId = parseInt(standupRow.dataset.taskId, 10);
+      const commentId = parseInt(standupRow.dataset.id, 10);
+      const comment = (taskCommentsCache[taskId] || []).find((entry) => entry.id === commentId);
+      if (comment) openStandupEdit(taskId, comment);
+      return;
+    }
+
     const row = event.target.closest(".editable-row");
     if (!row) return;
     const task = taskCache.find((entry) => String(entry.id) === row.dataset.id);
@@ -1395,12 +1682,22 @@ function bindTaskListEvents() {
     if (!form) return;
     event.preventDefault();
     const taskId = parseInt(form.dataset.taskId, 10);
-    const input = form.querySelector(".task-comment-input");
-    const text = input.value.trim();
-    if (!text) return;
-    addTaskComment(taskId, text)
+    const comment = form.querySelector('[name="comment"]')?.value.trim();
+    const status = form.querySelector('[name="status"]')?.value || "in_progress";
+    const assignedTo = form.querySelector('[name="assigned_to"]')?.value;
+    if (!comment) return;
+    if (!assignedTo) {
+      toast("Select a team member", true);
+      return;
+    }
+    addTaskComment(taskId, {
+      comment,
+      status,
+      assigned_to: parseInt(assignedTo, 10),
+    })
       .then(() => {
-        input.value = "";
+        const commentInput = form.querySelector('[name="comment"]');
+        if (commentInput) commentInput.value = "";
       })
       .catch((err) => toast(err.message, true));
   });
@@ -1478,6 +1775,30 @@ function initCreatePanels() {
           status: document.getElementById("task-edit-status").value,
           priority: document.getElementById("task-edit-priority").value,
           due_date: dueDate || null,
+        });
+      } catch (err) {
+        toast(err.message, true);
+      }
+    });
+  }
+
+  const standupEditForm = document.getElementById("standup-edit-form");
+  if (standupEditForm) {
+    standupEditForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const taskId = parseInt(document.getElementById("standup-edit-task-id").value, 10);
+      const commentId = parseInt(document.getElementById("standup-edit-id").value, 10);
+      const assignedTo = document.getElementById("standup-edit-member").value;
+      const comment = document.getElementById("standup-edit-comment").value.trim();
+      if (!assignedTo) {
+        toast("Select a team member", true);
+        return;
+      }
+      try {
+        await updateStandupComment(taskId, commentId, {
+          comment,
+          status: document.getElementById("standup-edit-status").value,
+          assigned_to: parseInt(assignedTo, 10),
         });
       } catch (err) {
         toast(err.message, true);
@@ -1754,6 +2075,7 @@ async function loadDashboard() {
     loadReminders(),
     loadTaskGroups(),
     loadArchivedGroups(),
+    loadProfile(),
   ]);
   updateDashboardStats(tasks, members);
   return { tasks, members };
@@ -1974,6 +2296,7 @@ function initApp() {
   });
 
   initConfirmModal();
+  initProfileModal();
   initSectionCollapse();
   initSidebarToggle();
   initSearch();

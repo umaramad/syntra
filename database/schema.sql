@@ -33,8 +33,11 @@ CREATE TABLE IF NOT EXISTS task_comments (
     task_id INTEGER NOT NULL,
     comment TEXT NOT NULL,
     author_name TEXT DEFAULT 'User',
+    status TEXT DEFAULT 'in_progress',
+    assigned_to INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+    FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY (assigned_to) REFERENCES team_members(id)
 );
 
 CREATE TABLE IF NOT EXISTS notes (
@@ -82,3 +85,13 @@ CREATE TABLE IF NOT EXISTS reminders (
 
 CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
 CREATE INDEX IF NOT EXISTS idx_reminders_assigned_to ON reminders(assigned_to);
+
+CREATE TABLE IF NOT EXISTS user_profile (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    display_name TEXT NOT NULL DEFAULT 'User',
+    email TEXT,
+    role TEXT,
+    team_member_id INTEGER,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_member_id) REFERENCES team_members(id)
+);

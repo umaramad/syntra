@@ -191,6 +191,32 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         "CREATE INDEX IF NOT EXISTS idx_task_comments_task_id ON task_comments(task_id)"
     )
 
+    comment_columns = {
+        row[1] for row in conn.execute("PRAGMA table_info(task_comments)").fetchall()
+    }
+    if "status" not in comment_columns:
+        conn.execute(
+            "ALTER TABLE task_comments ADD COLUMN status TEXT DEFAULT 'in_progress'"
+        )
+    if "assigned_to" not in comment_columns:
+        conn.execute(
+            "ALTER TABLE task_comments ADD COLUMN assigned_to INTEGER REFERENCES team_members(id)"
+        )
+
+    conn.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS user_profile (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            display_name TEXT NOT NULL DEFAULT 'User',
+            email TEXT,
+            role TEXT,
+            team_member_id INTEGER,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (team_member_id) REFERENCES team_members(id)
+        );
+        """
+    )
+
 
 def init_db() -> None:
     """Create schema, migrate, and seed default MCP tools."""

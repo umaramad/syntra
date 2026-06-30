@@ -77,15 +77,36 @@ def register_task_routes(app: Flask) -> None:
     @app.route("/api/tasks/<int:task_id>/comments", methods=["POST"])
     def add_task_comment(task_id):
         data = request.get_json(silent=True) or {}
+        assigned_to = data.get("assigned_to")
         try:
             comment = comment_service.add_comment(
                 task_id,
                 comment=data.get("comment", ""),
                 author_name=data.get("author_name", "User"),
+                status=data.get("status", "in_progress"),
+                assigned_to=int(assigned_to) if assigned_to not in (None, "") else None,
             )
             if not comment:
                 return jsonify({"error": "Task not found"}), 404
             return jsonify(comment.to_dict()), 201
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+    @app.route("/api/tasks/<int:task_id>/comments/<int:comment_id>", methods=["PUT"])
+    def update_task_comment(task_id, comment_id):
+        data = request.get_json(silent=True) or {}
+        assigned_to = data.get("assigned_to")
+        try:
+            comment = comment_service.update_comment(
+                task_id,
+                comment_id,
+                comment=data.get("comment", ""),
+                status=data.get("status", "in_progress"),
+                assigned_to=int(assigned_to) if assigned_to not in (None, "") else None,
+            )
+            if not comment:
+                return jsonify({"error": "Comment not found"}), 404
+            return jsonify(comment.to_dict())
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 

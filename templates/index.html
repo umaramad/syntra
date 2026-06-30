@@ -59,7 +59,10 @@
         </div>
         <div class="header-actions">
           <input type="search" class="search-box" placeholder="Search tasks, notes, team...">
-          <div class="profile">User</div>
+          <button type="button" class="profile-btn" id="profile-btn" aria-label="Open profile">
+            <span class="profile-avatar" id="profile-avatar">U</span>
+            <span class="profile-name" id="profile-name">User</span>
+          </button>
         </div>
       </header>
 
@@ -138,6 +141,24 @@
               <input type="date" id="task-edit-due" class="inline-input">
               <button type="submit" class="inline-submit">Save</button>
               <button type="button" class="inline-cancel" data-panel="task-edit-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="create-panel edit-panel" id="standup-edit-panel" hidden>
+            <form id="standup-edit-form" class="inline-create-form">
+              <input type="hidden" id="standup-edit-task-id">
+              <input type="hidden" id="standup-edit-id">
+              <select id="standup-edit-member" class="inline-input" required aria-label="Team member">
+                <option value="">Select member</option>
+              </select>
+              <select id="standup-edit-status" class="inline-input" aria-label="Status">
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <input type="text" id="standup-edit-comment" class="inline-input" placeholder="Standup update" required>
+              <button type="submit" class="inline-submit">Save</button>
+              <button type="button" class="inline-cancel" data-panel="standup-edit-panel">Cancel</button>
             </form>
           </div>
           <div class="task-filters" id="task-filters">
@@ -372,6 +393,47 @@
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <div id="profile-modal" class="profile-modal" hidden aria-hidden="true">
+    <div class="profile-modal-backdrop" data-profile-dismiss></div>
+    <div
+      id="profile-modal-dialog"
+      class="profile-modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="profile-modal-title"
+    >
+      <h2 id="profile-modal-title" class="profile-modal-title">Your profile</h2>
+      <form id="profile-form" class="profile-form">
+        <label class="profile-field">
+          <span class="profile-label">Display name</span>
+          <input type="text" id="profile-display-name" class="profile-input" required maxlength="120">
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Email</span>
+          <input type="email" id="profile-email" class="profile-input" maxlength="200">
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Role</span>
+          <input type="text" id="profile-role" class="profile-input" maxlength="120" placeholder="Job title">
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Linked team member</span>
+          <select id="profile-team-member" class="profile-input">
+            <option value="">None</option>
+          </select>
+        </label>
+        <div class="profile-modal-actions">
+          <button type="button" class="profile-modal-btn profile-modal-cancel" id="profile-modal-cancel">
+            Cancel
+          </button>
+          <button type="submit" class="profile-modal-btn profile-modal-save" id="profile-modal-save">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <div id="confirm-modal" class="confirm-modal" hidden aria-hidden="true">
     <div class="confirm-modal-backdrop" data-confirm-dismiss></div>

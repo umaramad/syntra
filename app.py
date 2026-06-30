@@ -3,6 +3,7 @@ from flask import Flask, render_template
 import config
 from controllers.mcp_controller import register_mcp_routes
 from controllers.note_controller import register_note_routes
+from controllers.profile_controller import register_profile_routes
 from controllers.reminder_controller import register_reminder_routes
 from controllers.task_controller import register_task_routes
 from controllers.task_group_controller import register_task_group_routes
@@ -21,6 +22,7 @@ def create_app() -> Flask:
     register_task_group_routes(app)
     register_note_routes(app)
     register_team_routes(app)
+    register_profile_routes(app)
     register_reminder_routes(app)
     register_mcp_routes(app)
 
