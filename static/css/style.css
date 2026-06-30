@@ -413,6 +413,40 @@ body {
   padding: 0 1rem 0.75rem;
 }
 
+.task-filter-my-work-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.task-filter-my-work-btn:hover:not(:disabled) {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.task-filter-my-work-btn.is-active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.task-filter-my-work-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .task-filter-select {
   min-width: 140px;
   padding: 0.45rem 0.65rem;
@@ -908,6 +942,47 @@ body {
   font-size: 0.8125rem;
   color: var(--text-muted);
   text-align: center;
+}
+
+.standup-summary-count {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.9em;
+}
+
+.standup-summary-body {
+  padding: 0;
+}
+
+.standup-summary-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.standup-summary-copy-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.standup-summary-copy-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.standup-summary-table td:first-child {
+  font-weight: 500;
 }
 
 .task-comment-delete {
@@ -2051,9 +2126,9 @@ body.modal-open {
 
 .settings-theme-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
-  max-width: 360px;
+  max-width: 480px;
 }
 
 .settings-theme-option {
@@ -2092,6 +2167,10 @@ body.modal-open {
 
 .settings-theme-preview--dark {
   background: linear-gradient(135deg, #0f1117 50%, #1a1d28 50%);
+}
+
+.settings-theme-preview--system {
+  background: linear-gradient(90deg, #f4f5f9 50%, #0f1117 50%);
 }
 
 .settings-theme-name {

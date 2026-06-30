@@ -18,6 +18,7 @@ const {
   isOverdue,
   nowFormatted,
   parseStoredDateTime,
+  localDateString,
 } = window.SyntraDateTime;
 
 const TASK_TOOLS = new Set(["create_task", "list_tasks", "assign_task"]);
@@ -28,7 +29,7 @@ const TAB_ATTENTION_INTERVAL_MS = 1000;
 const DEFAULT_PAGE_TITLE = "Syntra";
 const DEFAULT_FAVICON_HREF = "/static/images/syntra-mark.svg";
 const ALERT_FAVICON_HREF = "/static/images/syntra-mark-alert.svg";
-const VALID_THEMES = ["light", "dark"];
+const VALID_THEMES = ["light", "dark", "system"];
 const THEME_STORAGE_KEY = "syntra-theme";
 const SIDEBAR_STORAGE_KEY = "syntra-sidebar-collapsed";
 
@@ -59,6 +60,7 @@ let tabAttentionListenersBound = false;
 let cachedDefaultTitle = null;
 let cachedFaviconLink = null;
 let cachedDefaultFaviconHref = DEFAULT_FAVICON_HREF;
+let systemThemeListenerBound = false;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -220,6 +222,7 @@ function openProfileModal() {
 async function loadProfile() {
   profileCache = await request(API.profile);
   renderProfileHeader();
+  updateMyWorkFilterButton();
   return profileCache;
 }
 
@@ -229,25 +232,55 @@ function renderSettingsUI() {
     toggle.checked = isReminderNotificationsEnabled();
   }
 
-  const theme = getActiveTheme();
+  const theme = getThemePreference();
   document.querySelectorAll('input[name="setting-theme"]').forEach((input) => {
     input.checked = input.value === theme;
   });
 }
 
-function getActiveTheme() {
+function getSystemColorScheme() {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function getThemePreference() {
   const theme = settingsCache?.theme || "light";
   return VALID_THEMES.includes(theme) ? theme : "light";
 }
 
-function applyTheme(theme) {
-  const resolved = VALID_THEMES.includes(theme) ? theme : "light";
+function resolveTheme(themePreference) {
+  if (themePreference === "system") return getSystemColorScheme();
+  return themePreference === "dark" ? "dark" : "light";
+}
+
+function getActiveTheme() {
+  return resolveTheme(getThemePreference());
+}
+
+function formatThemeAppliedMessage(themePreference) {
+  if (themePreference === "system") return "System theme applied";
+  return `${themePreference === "dark" ? "Dark" : "Light"} theme applied`;
+}
+
+function applyTheme(themePreference) {
+  const preference = VALID_THEMES.includes(themePreference) ? themePreference : "light";
+  const resolved = resolveTheme(preference);
   document.documentElement.dataset.theme = resolved === "dark" ? "dark" : "";
   try {
-    localStorage.setItem(THEME_STORAGE_KEY, resolved);
+    localStorage.setItem(THEME_STORAGE_KEY, preference);
   } catch (_err) {
     /* ignore storage errors */
   }
+}
+
+function bindSystemThemeListener() {
+  if (systemThemeListenerBound || !window.matchMedia) return;
+  systemThemeListenerBound = true;
+
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (getThemePreference() === "system") {
+      applyTheme("system");
+    }
+  });
 }
 
 async function loadSettings() {
@@ -272,7 +305,7 @@ async function patchSettings(partial, options = {}) {
 
   if (!silent) {
     if ("theme" in partial) {
-      toast(`${getActiveTheme() === "dark" ? "Dark" : "Light"} theme applied`);
+      toast(formatThemeAppliedMessage(partial.theme));
     }
   }
 
@@ -286,10 +319,11 @@ async function saveReminderNotificationsSetting(enabled) {
 
 async function saveThemeSetting(theme) {
   await patchSettings({ theme }, { silent: true });
-  toast(`${theme === "dark" ? "Dark" : "Light"} theme applied`);
+  toast(formatThemeAppliedMessage(theme));
 }
 
 function initSettings() {
+  bindSystemThemeListener();
   const toggle = document.getElementById("setting-reminder-notifications");
   if (toggle && toggle.dataset.bound !== "true") {
     toggle.dataset.bound = "true";
@@ -320,6 +354,7 @@ async function saveProfile(event) {
   const email = document.getElementById("profile-email").value.trim();
   const role = document.getElementById("profile-role").value.trim();
   const teamMemberId = document.getElementById("profile-team-member").value;
+  const previousMemberId = profileCache?.team_member_id ?? null;
 
   try {
     profileCache = await request(API.profile, {
@@ -332,6 +367,7 @@ async function saveProfile(event) {
       }),
     });
     renderProfileHeader();
+    syncMyWorkFilterAfterProfileChange(previousMemberId);
     closeProfileModal();
     toast("Profile saved");
   } catch (err) {
@@ -500,6 +536,79 @@ function updateTaskFilterAssigneeOptions() {
       .map((member) => `<option value="${member.id}">${escapeHtml(member.name)}</option>`)
       .join("");
   select.value = current;
+  updateMyWorkFilterButton();
+}
+
+function hasMyWorkProfileLink() {
+  return Boolean(profileCache?.team_member_id);
+}
+
+function isMyWorkFilterActive() {
+  return (
+    hasMyWorkProfileLink() &&
+    taskFilters.assignee === String(profileCache.team_member_id)
+  );
+}
+
+function updateMyWorkFilterButton() {
+  const btn = document.getElementById("task-filter-my-work");
+  if (!btn) return;
+
+  const linked = hasMyWorkProfileLink();
+  const active = isMyWorkFilterActive();
+  const memberName = profileCache?.team_member_name || "you";
+
+  btn.disabled = !linked;
+  btn.classList.toggle("is-active", active);
+  btn.setAttribute("aria-pressed", String(active));
+
+  if (!linked) {
+    btn.title = "Link a team member in Profile to use My Work";
+    btn.setAttribute("aria-label", "My Work filter unavailable — link a team member in Profile");
+    return;
+  }
+
+  btn.title = active
+    ? `Showing tasks assigned to ${memberName}. Click to clear.`
+    : `Show tasks assigned to ${memberName}`;
+  btn.setAttribute(
+    "aria-label",
+    active ? `My Work filter active for ${memberName}` : `Filter tasks assigned to ${memberName}`
+  );
+}
+
+function applyMyWorkFilter() {
+  if (!hasMyWorkProfileLink()) {
+    toast("Link a team member in Profile first", true);
+    return;
+  }
+
+  const memberId = String(profileCache.team_member_id);
+  taskFilters.assignee = isMyWorkFilterActive() ? "" : memberId;
+
+  const assigneeSelect = document.getElementById("task-filter-assignee");
+  if (assigneeSelect) assigneeSelect.value = taskFilters.assignee;
+
+  updateMyWorkFilterButton();
+  expandSection("my-tasks");
+  renderTasksFromCache();
+}
+
+function syncMyWorkFilterAfterProfileChange(previousMemberId) {
+  if (!previousMemberId || String(previousMemberId) !== taskFilters.assignee) {
+    updateMyWorkFilterButton();
+    return;
+  }
+
+  taskFilters.assignee = profileCache?.team_member_id
+    ? String(profileCache.team_member_id)
+    : "";
+
+  const assigneeSelect = document.getElementById("task-filter-assignee");
+  if (assigneeSelect) assigneeSelect.value = taskFilters.assignee;
+
+  updateMyWorkFilterButton();
+  renderTasksFromCache();
 }
 
 function initSearch() {
@@ -538,8 +647,11 @@ function initTaskFilters() {
 
   assigneeSelect?.addEventListener("change", () => {
     taskFilters.assignee = assigneeSelect.value;
+    updateMyWorkFilterButton();
     renderTasksFromCache();
   });
+
+  document.getElementById("task-filter-my-work")?.addEventListener("click", applyMyWorkFilter);
 }
 
 async function requestNotificationPermission() {
@@ -1172,6 +1284,208 @@ async function copyHtmlToClipboard(html, plainText) {
   }
 }
 
+function isStandupUpdateToday(entry) {
+  const date = parseStoredDateTime(entry.created_at);
+  if (!date) return false;
+  return localDateString(date) === localDateString();
+}
+
+async function prefetchTaskCommentsForSummary() {
+  const taskIds = new Set([
+    ...taskCache.filter((task) => (task.comment_count || 0) > 0).map((task) => task.id),
+    ...Object.keys(taskCommentsCache).map((id) => parseInt(id, 10)),
+  ]);
+  await Promise.all([...taskIds].map((taskId) => ensureTaskComments(taskId)));
+}
+
+function collectTodayStandupUpdates() {
+  const entries = [];
+
+  for (const task of taskCache) {
+    const comments = taskCommentsCache[task.id];
+    if (!comments?.length) continue;
+
+    for (const comment of comments) {
+      if (!isStandupUpdateToday(comment)) continue;
+      entries.push({
+        taskId: task.id,
+        taskTitle: task.title,
+        groupName: task.group_name || "—",
+        ...comment,
+      });
+    }
+  }
+
+  return entries.sort((a, b) => {
+    const timeA = parseStoredDateTime(a.created_at)?.getTime() || 0;
+    const timeB = parseStoredDateTime(b.created_at)?.getTime() || 0;
+    return timeB - timeA;
+  });
+}
+
+function renderStandupSummary(entries) {
+  const container = document.getElementById("standup-summary-list");
+  const countEl = document.getElementById("standup-summary-count");
+  if (!container) return;
+
+  if (countEl) {
+    countEl.textContent = entries.length ? `(${entries.length})` : "";
+  }
+
+  if (!taskCache.length) {
+    container.innerHTML = '<p class="empty">No tasks yet.</p>';
+    return;
+  }
+
+  if (!entries.length) {
+    container.innerHTML = '<p class="empty">No standup updates posted today.</p>';
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="standup-table-wrap">
+      <table class="standup-table standup-summary-table">
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Group</th>
+            <th>Member</th>
+            <th>Status</th>
+            <th>Update</th>
+            <th class="standup-time-cell">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${entries
+            .map(
+              (entry) => `
+            <tr>
+              <td>${escapeHtml(entry.taskTitle || "—")}</td>
+              <td>${escapeHtml(entry.groupName)}</td>
+              <td>${escapeHtml(entry.assignee_name || "—")}</td>
+              <td>${escapeHtml(formatTaskStatus(entry.status))}</td>
+              <td class="standup-update-cell">${escapeHtml(entry.comment)}</td>
+              <td class="standup-time-cell">${escapeHtml(formatDateTime(entry.created_at))}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function buildStandupSummaryClipboardPlain(entries) {
+  const exportedAt = nowFormatted();
+  const todayLabel = new Date().toLocaleDateString(undefined, { dateStyle: "long" });
+  const header = `Today's Standup — ${todayLabel}\nExported from Syntra on ${exportedAt}\n`;
+  const columns = ["Task", "Group", "Member", "Status", "Update", "Time"];
+  const rows = entries.map((entry) => [
+    entry.taskTitle || "—",
+    entry.groupName,
+    entry.assignee_name || "—",
+    formatTaskStatus(entry.status),
+    entry.comment,
+    formatDateTime(entry.created_at),
+  ]);
+
+  const colWidths = columns.map((col, index) =>
+    Math.max(col.length, ...rows.map((row) => String(row[index]).split("\n")[0].length))
+  );
+
+  const formatRow = (cells) =>
+    cells.map((cell, index) => String(cell).padEnd(colWidths[index])).join("  ");
+
+  const divider = colWidths.map((width) => "-".repeat(width)).join("  ");
+  const body = rows
+    .map((row) => {
+      const firstLine = formatRow(row.map((cell) => String(cell).split("\n")[0]));
+      const commentLines = String(row[4]).split("\n").slice(1);
+      if (!commentLines.length) return firstLine;
+      const indent = " ".repeat(colWidths.slice(0, 4).reduce((sum, width) => sum + width + 2, 0));
+      return [firstLine, ...commentLines.map((line) => indent + line)].join("\n");
+    })
+    .join("\n");
+
+  return `${header}\n${formatRow(columns)}\n${divider}\n${body}`;
+}
+
+function buildStandupSummaryClipboardHtml(entries) {
+  const exportedAt = nowFormatted();
+  const todayLabel = new Date().toLocaleDateString(undefined, { dateStyle: "long" });
+  const headerCells = ["Task", "Group", "Member", "Status", "Update", "Time"]
+    .map(
+      (label) =>
+        `<th style="border:1px solid #2f5597;background-color:#4472c4;color:#ffffff;padding:8px 10px;text-align:left;font-size:11pt;">${label}</th>`
+    )
+    .join("");
+
+  const bodyRows = entries
+    .map((entry, index) => {
+      const rowBg = index % 2 === 0 ? "#ffffff" : "#f3f6fb";
+      const cellStyle =
+        "border:1px solid #bfbfbf;padding:8px 10px;vertical-align:top;font-size:11pt;color:#111827;";
+      return `<tr style="background-color:${rowBg};">
+        <td style="${cellStyle}">${escapeHtml(entry.taskTitle || "—")}</td>
+        <td style="${cellStyle}">${escapeHtml(entry.groupName)}</td>
+        <td style="${cellStyle}">${escapeHtml(entry.assignee_name || "—")}</td>
+        <td style="${cellStyle}">${escapeHtml(formatTaskStatus(entry.status))}</td>
+        <td style="${cellStyle}">${escapeHtml(entry.comment)}</td>
+        <td style="${cellStyle}">${escapeHtml(formatDateTime(entry.created_at))}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const fragment = `
+    <div style="font-family:Calibri,Arial,sans-serif;color:#111827;">
+      <p style="margin:0 0 4px 0;font-size:14pt;font-weight:700;">Today's Standup — ${escapeHtml(todayLabel)}</p>
+      <p style="margin:0 0 12px 0;font-size:10pt;color:#6b7280;">Exported from Syntra on ${escapeHtml(exportedAt)}</p>
+      <table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:960px;font-family:Calibri,Arial,sans-serif;">
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+
+  return `<!DOCTYPE html><html><body><!--StartFragment-->${fragment}<!--EndFragment--></body></html>`;
+}
+
+async function refreshStandupSummary() {
+  await prefetchTaskCommentsForSummary();
+  const entries = collectTodayStandupUpdates();
+  renderStandupSummary(entries);
+  return entries;
+}
+
+async function copyAllStandupsToday() {
+  const entries = collectTodayStandupUpdates();
+  if (!entries.length) {
+    toast("No standup updates to copy for today");
+    return;
+  }
+
+  const html = buildStandupSummaryClipboardHtml(entries);
+  const plain = buildStandupSummaryClipboardPlain(entries);
+  await copyHtmlToClipboard(html, plain);
+  toast("Today's standup copied to clipboard");
+}
+
+function initStandupSummary() {
+  const copyBtn = document.getElementById("standup-summary-copy-btn");
+  if (!copyBtn || copyBtn.dataset.bound === "true") return;
+  copyBtn.dataset.bound = "true";
+
+  copyBtn.addEventListener("click", () => {
+    if (copyBtn.dataset.copying === "true") return;
+    copyBtn.dataset.copying = "true";
+    copyBtn.disabled = true;
+    copyAllStandupsToday()
+      .catch((err) => toast(err.message, true))
+      .finally(() => {
+        copyBtn.dataset.copying = "false";
+        copyBtn.disabled = false;
+      });
+  });
+}
+
 async function copyTaskGroup(groupId, groupName, source = "active") {
   const tasks =
     source === "archived"
@@ -1719,6 +2033,7 @@ async function addTaskComment(taskId, payload) {
   taskCommentsCache[taskId] = [...(taskCommentsCache[taskId] || []), entry];
   renderTaskCommentsList(taskId, taskCommentsCache[taskId]);
   updateTaskCommentCount(taskId, taskCommentsCache[taskId].length);
+  refreshStandupSummary().catch((err) => toast(err.message, true));
   toast("Standup update posted");
   return entry;
 }
@@ -1736,6 +2051,7 @@ async function deleteTaskComment(taskId, commentId) {
   taskCommentsCache[taskId] = (taskCommentsCache[taskId] || []).filter((item) => item.id !== commentId);
   renderTaskCommentsList(taskId, taskCommentsCache[taskId]);
   updateTaskCommentCount(taskId, taskCommentsCache[taskId].length);
+  refreshStandupSummary().catch((err) => toast(err.message, true));
   closeCreatePanel("standup-edit-panel");
   toast("Standup update deleted");
 }
@@ -1753,6 +2069,7 @@ async function updateStandupComment(taskId, commentId, payload) {
     item.id === commentId ? entry : item
   );
   renderTaskCommentsList(taskId, taskCommentsCache[taskId]);
+  refreshStandupSummary().catch((err) => toast(err.message, true));
   closeCreatePanel("standup-edit-panel");
   toast("Standup update saved");
   return entry;
@@ -1798,7 +2115,8 @@ function expandSection(sectionOrId) {
 
 function initSectionCollapse() {
   document.querySelectorAll(".section-collapsible").forEach((section) => {
-    setSectionCollapsed(section, true);
+    const defaultCollapsed = section.dataset.defaultExpanded !== "true";
+    setSectionCollapsed(section, defaultCollapsed);
 
     const btn = section.querySelector(".section-collapse-btn");
     if (!btn || btn.dataset.bound === "true") return;
@@ -2558,6 +2876,8 @@ async function loadDashboard() {
     loadProfile(),
   ]);
   updateDashboardStats(tasks, members);
+  await refreshStandupSummary();
+  updateMyWorkFilterButton();
   return { tasks, members };
 }
 
@@ -2778,6 +3098,7 @@ function initApp() {
   initConfirmModal();
   initProfileModal();
   initSettings();
+  initStandupSummary();
   initSectionCollapse();
   initSidebarToggle();
   initSearch();

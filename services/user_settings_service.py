@@ -4,7 +4,7 @@ from models.user_settings import UserSettings
 from repositories.user_settings_repository import UserSettingsRepository
 from utils.datetime_utils import utc_now_str
 
-VALID_THEMES = ("light", "dark")
+VALID_THEMES = ("light", "dark", "system")
 DEFAULT_THEME = "light"
 
 

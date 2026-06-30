@@ -9,7 +9,10 @@
   <script>
     try {
       var savedTheme = localStorage.getItem("syntra-theme");
-      if (savedTheme === "dark") document.documentElement.dataset.theme = "dark";
+      var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (savedTheme === "dark" || (savedTheme === "system" && prefersDark)) {
+        document.documentElement.dataset.theme = "dark";
+      }
     } catch (_err) {}
   </script>
 </head>
@@ -100,6 +103,25 @@
           </div>
         </section>
 
+        <section class="section section-collapsible" id="standup-summary" data-default-expanded="true">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Today's Standup section" aria-expanded="true">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Today's Standup <span class="standup-summary-count" id="standup-summary-count"></span></h2>
+            <div class="section-header-actions">
+              <button type="button" class="standup-summary-copy-btn" id="standup-summary-copy-btn" aria-label="Copy all standup updates for today" title="Copy all today's standups">
+                Copy all
+              </button>
+            </div>
+          </div>
+          <div class="section-content">
+            <div class="section-body standup-summary-body" id="standup-summary-list">
+              <p class="empty">Loading today's updates...</p>
+            </div>
+          </div>
+        </section>
+
         <section class="section section-collapsible is-collapsed" id="my-tasks">
           <div class="section-header">
             <button type="button" class="section-collapse-btn" aria-label="Expand My Tasks section" aria-expanded="false">
@@ -172,6 +194,9 @@
             </form>
           </div>
           <div class="task-filters" id="task-filters">
+            <button type="button" class="task-filter-my-work-btn" id="task-filter-my-work" disabled aria-pressed="false" title="Link a team member in Profile to use My Work">
+              My Work
+            </button>
             <select id="task-filter-status" class="task-filter-select" aria-label="Filter by status">
               <option value="">All statuses</option>
               <option value="pending">Pending</option>
@@ -426,6 +451,13 @@
                       <span class="settings-theme-card">
                         <span class="settings-theme-preview settings-theme-preview--dark" aria-hidden="true"></span>
                         <span class="settings-theme-name">Dark</span>
+                      </span>
+                    </label>
+                    <label class="settings-theme-option">
+                      <input type="radio" name="setting-theme" value="system" class="settings-theme-input">
+                      <span class="settings-theme-card">
+                        <span class="settings-theme-preview settings-theme-preview--system" aria-hidden="true"></span>
+                        <span class="settings-theme-name">System</span>
                       </span>
                     </label>
                   </div>
