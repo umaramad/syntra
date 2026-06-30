@@ -14,6 +14,7 @@
   --border: #e4e7ef;
   --border-light: #f0f2f7;
   --text: #1a1d26;
+  --text-primary: #1a1d26;
   --text-secondary: #4b5568;
   --text-muted: #8b93a7;
   --primary: #7c3aed;
@@ -35,9 +36,39 @@
   --transition: 0.18s ease;
 }
 
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1117;
+  --bg-subtle: #161922;
+  --surface: #1a1d28;
+  --surface-hover: #22263a;
+  --border: #2a3042;
+  --border-light: #232838;
+  --text: #e8eaef;
+  --text-primary: #e8eaef;
+  --text-secondary: #b4bac8;
+  --text-muted: #7a8299;
+  --primary: #9b6dff;
+  --primary-hover: #b08cff;
+  --primary-light: #2a2240;
+  --primary-soft: rgba(155, 109, 255, 0.14);
+  --success: #34d399;
+  --success-bg: #0f2e24;
+  --danger: #f87171;
+  --danger-bg: #3a1515;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 body {
@@ -1740,6 +1771,348 @@ body.modal-open {
   }
 }
 
+/* Reminder popups */
+
+.reminder-popup-stack {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 150;
+  pointer-events: none;
+}
+
+.reminder-popup {
+  --stack-depth: 0;
+  position: absolute;
+  top: calc(var(--stack-depth) * 12px);
+  right: calc(var(--stack-depth) * 12px);
+  pointer-events: auto;
+  width: 280px;
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  animation: reminderPopupIn 0.25s ease;
+  cursor: pointer;
+  transition: top 0.2s ease, right 0.2s ease, transform 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reminder-popup:not(.is-front) {
+  transform: scale(0.98);
+  opacity: 0.88;
+  box-shadow: var(--shadow);
+}
+
+.reminder-popup:not(.is-front) .reminder-popup-actions {
+  pointer-events: none;
+}
+
+.reminder-popup.is-front {
+  transform: scale(1);
+  opacity: 1;
+  box-shadow: var(--shadow-lg);
+  cursor: default;
+}
+
+@keyframes reminderPopupIn {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.reminder-popup-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--primary);
+  margin-bottom: 0.25rem;
+}
+
+.reminder-popup-title {
+  margin: 0 0 0.375rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.reminder-popup-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.reminder-popup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reminder-popup-snooze-menu {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.reminder-popup-btn {
+  flex: 1;
+  padding: 0.4375rem 0.625rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.reminder-popup-btn--dismiss {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.reminder-popup-btn--dismiss:hover {
+  filter: brightness(1.05);
+}
+
+.reminder-popup-btn--snooze {
+  background: var(--bg);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+.reminder-popup-btn--snooze:hover {
+  background: var(--surface);
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] .search-match {
+  background: #1e293b;
+}
+
+[data-theme="dark"] .editable-row:hover {
+  background: var(--surface-hover);
+}
+
+[data-theme="dark"] .status-pending {
+  background: #2a2410;
+  border-color: #5c4d1a;
+  color: #fbbf24;
+}
+
+[data-theme="dark"] .status-in_progress {
+  background: #172554;
+  border-color: #1e40af;
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .status-done {
+  background: #0f2e24;
+  border-color: #166534;
+  color: #86efac;
+}
+
+[data-theme="dark"] .status-cancelled {
+  background: #3a1515;
+  border-color: #991b1b;
+  color: #fca5a5;
+}
+
+[data-theme="dark"] .status-sent {
+  background: #0f2e24;
+  border-color: #166534;
+  color: #86efac;
+}
+
+[data-theme="dark"] .confirm-modal-backdrop,
+[data-theme="dark"] .profile-modal-backdrop {
+  background: rgba(0, 0, 0, 0.65);
+}
+
+/* Settings */
+
+.settings-body {
+  max-width: 640px;
+}
+
+.settings-group {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.settings-group:last-child {
+  border-bottom: none;
+}
+
+.settings-group-title {
+  margin: 0 0 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.settings-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  cursor: pointer;
+}
+
+.settings-toggle-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.settings-toggle-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-toggle-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.settings-toggle-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-toggle-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 44px;
+  height: 24px;
+  background: var(--border);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.settings-toggle-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s ease;
+}
+
+.settings-toggle-input:checked + .settings-toggle-switch {
+  background: var(--primary);
+}
+
+.settings-toggle-input:checked + .settings-toggle-switch::after {
+  transform: translateX(20px);
+}
+
+.settings-toggle-input:focus-visible + .settings-toggle-switch {
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.settings-theme-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.settings-field-label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.settings-field-hint {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin-top: -0.25rem;
+}
+
+.settings-theme-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  max-width: 360px;
+}
+
+.settings-theme-option {
+  cursor: pointer;
+}
+
+.settings-theme-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.settings-theme-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-theme-preview {
+  width: 100%;
+  height: 56px;
+  border-radius: 6px;
+  border: 1px solid var(--border-light);
+}
+
+.settings-theme-preview--light {
+  background: linear-gradient(135deg, #f4f5f9 50%, #ffffff 50%);
+}
+
+.settings-theme-preview--dark {
+  background: linear-gradient(135deg, #0f1117 50%, #1a1d28 50%);
+}
+
+.settings-theme-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.settings-theme-input:checked + .settings-theme-card {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.settings-theme-input:checked + .settings-theme-card .settings-theme-name {
+  color: var(--primary);
+}
+
+.settings-theme-input:focus-visible + .settings-theme-card {
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
 /* Toast */
 
 .toast {
@@ -1942,6 +2315,17 @@ body.modal-open {
     left: 1rem;
     right: 1rem;
     bottom: 1rem;
+  }
+
+  .reminder-popup-stack {
+    top: 1rem;
+    right: 1rem;
+    left: auto;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .reminder-popup {
+    width: min(280px, calc(100vw - 2rem));
   }
 }
 

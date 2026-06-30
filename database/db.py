@@ -214,8 +214,23 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (team_member_id) REFERENCES team_members(id)
         );
+
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            reminder_notifications_enabled INTEGER NOT NULL DEFAULT 0,
+            theme TEXT NOT NULL DEFAULT 'light',
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        );
         """
     )
+
+    settings_columns = {
+        row[1] for row in conn.execute("PRAGMA table_info(user_settings)").fetchall()
+    }
+    if "theme" not in settings_columns:
+        conn.execute(
+            "ALTER TABLE user_settings ADD COLUMN theme TEXT NOT NULL DEFAULT 'light'"
+        )
 
 
 def init_db() -> None:

@@ -7,6 +7,7 @@ const API = {
   reminders: "/api/reminders",
   mcp: "/api/mcp",
   profile: "/api/profile",
+  settings: "/api/settings",
 };
 
 const {
@@ -21,7 +22,10 @@ const {
 
 const TASK_TOOLS = new Set(["create_task", "list_tasks", "assign_task"]);
 const NOTE_TOOLS = new Set(["create_note", "list_notes"]);
-const REMINDER_POLL_MS = 60000;
+const REMINDER_FAST_POLL_MS = 3000;
+const REMINDER_SNOOZE_PRESETS = [5, 15, 60];
+const VALID_THEMES = ["light", "dark"];
+const THEME_STORAGE_KEY = "syntra-theme";
 const SIDEBAR_STORAGE_KEY = "syntra-sidebar-collapsed";
 
 const STANDUP_STATUSES = ["pending", "in_progress", "done", "cancelled"];
@@ -38,10 +42,14 @@ let noteCache = [];
 let teamCache = [];
 let reminderCache = [];
 let profileCache = null;
+let settingsCache = { reminder_notifications_enabled: false, theme: "light" };
 let searchQuery = "";
 const taskFilters = { status: "", priority: "", assignee: "" };
 const notifiedReminderIds = new Set();
 let reminderPollTimer = null;
+let nextReminderTimer = null;
+let reminderPopupZCounter = 0;
+let reminderVisibilityBound = false;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -204,6 +212,97 @@ async function loadProfile() {
   profileCache = await request(API.profile);
   renderProfileHeader();
   return profileCache;
+}
+
+function renderSettingsUI() {
+  const toggle = document.getElementById("setting-reminder-notifications");
+  if (toggle) {
+    toggle.checked = isReminderNotificationsEnabled();
+  }
+
+  const theme = getActiveTheme();
+  document.querySelectorAll('input[name="setting-theme"]').forEach((input) => {
+    input.checked = input.value === theme;
+  });
+}
+
+function getActiveTheme() {
+  const theme = settingsCache?.theme || "light";
+  return VALID_THEMES.includes(theme) ? theme : "light";
+}
+
+function applyTheme(theme) {
+  const resolved = VALID_THEMES.includes(theme) ? theme : "light";
+  document.documentElement.dataset.theme = resolved === "dark" ? "dark" : "";
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, resolved);
+  } catch (_err) {
+    /* ignore storage errors */
+  }
+}
+
+async function loadSettings() {
+  settingsCache = await request(API.settings);
+  applyTheme(settingsCache.theme);
+  renderSettingsUI();
+  return settingsCache;
+}
+
+async function patchSettings(partial, options = {}) {
+  const { silent = false } = options;
+  settingsCache = await request(API.settings, {
+    method: "PUT",
+    body: JSON.stringify(partial),
+  });
+  applyTheme(settingsCache.theme);
+  renderSettingsUI();
+
+  if ("reminder_notifications_enabled" in partial) {
+    applyReminderAlertsState();
+  }
+
+  if (!silent) {
+    if ("theme" in partial) {
+      toast(`${getActiveTheme() === "dark" ? "Dark" : "Light"} theme applied`);
+    }
+  }
+
+  return settingsCache;
+}
+
+async function saveReminderNotificationsSetting(enabled) {
+  await patchSettings({ reminder_notifications_enabled: enabled });
+  toast(enabled ? "Reminder notifications enabled" : "Reminder notifications disabled");
+}
+
+async function saveThemeSetting(theme) {
+  await patchSettings({ theme }, { silent: true });
+  toast(`${theme === "dark" ? "Dark" : "Light"} theme applied`);
+}
+
+function initSettings() {
+  const toggle = document.getElementById("setting-reminder-notifications");
+  if (toggle && toggle.dataset.bound !== "true") {
+    toggle.dataset.bound = "true";
+    toggle.addEventListener("change", () => {
+      saveReminderNotificationsSetting(toggle.checked).catch((err) => {
+        toggle.checked = isReminderNotificationsEnabled();
+        toast(err.message, true);
+      });
+    });
+  }
+
+  document.querySelectorAll('input[name="setting-theme"]').forEach((input) => {
+    if (input.dataset.bound === "true") return;
+    input.dataset.bound = "true";
+    input.addEventListener("change", () => {
+      if (!input.checked) return;
+      saveThemeSetting(input.value).catch((err) => {
+        renderSettingsUI();
+        toast(err.message, true);
+      });
+    });
+  });
 }
 
 async function saveProfile(event) {
@@ -441,8 +540,232 @@ async function requestNotificationPermission() {
   }
 }
 
+function snoozeMinutesFromNow(minutes) {
+  const date = new Date(Date.now() + minutes * 60_000);
+  const offset = date.getTimezoneOffset();
+  const local = new Date(date.getTime() - offset * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function formatSnoozeLabel(minutes) {
+  if (minutes >= 60) return `${minutes / 60}h`;
+  return `${minutes}m`;
+}
+
+function findReminderById(reminderId) {
+  return reminderCache.find((entry) => entry.id === reminderId);
+}
+
+function removeReminderPopup(reminderId) {
+  notifiedReminderIds.delete(reminderId);
+  document.getElementById(`reminder-popup-${reminderId}`)?.remove();
+  updateReminderPopupLayout();
+}
+
+function updateReminderPopupLayout() {
+  const stack = document.getElementById("reminder-popup-stack");
+  if (!stack) return;
+
+  const cards = [...stack.querySelectorAll(".reminder-popup")];
+  const count = cards.length;
+  const offsetStep = 12;
+
+  if (!count) {
+    stack.style.width = "";
+    stack.style.height = "";
+    return;
+  }
+
+  let front = cards.find((card) => card.classList.contains("is-front"));
+  if (!front) {
+    front = cards[cards.length - 1];
+    front.classList.add("is-front");
+  }
+
+  stack.style.width = `${280 + (count - 1) * offsetStep}px`;
+  stack.style.height = `${180 + (count - 1) * offsetStep}px`;
+
+  let backIndex = 0;
+  cards.forEach((card) => {
+    if (card === front) {
+      card.classList.add("is-front");
+      card.style.setProperty("--stack-depth", "0");
+      card.style.zIndex = String(1000 + reminderPopupZCounter);
+      return;
+    }
+
+    card.classList.remove("is-front");
+    backIndex += 1;
+    card.style.setProperty("--stack-depth", String(backIndex));
+    card.style.zIndex = String(100 + backIndex);
+  });
+}
+
+function focusReminderPopup(reminderId) {
+  const stack = document.getElementById("reminder-popup-stack");
+  const card = document.getElementById(`reminder-popup-${reminderId}`);
+  if (!stack || !card) return;
+
+  reminderPopupZCounter += 1;
+  stack.querySelectorAll(".reminder-popup").forEach((entry) => {
+    entry.classList.toggle("is-front", entry === card);
+  });
+  card.style.zIndex = String(1000 + reminderPopupZCounter);
+  stack.appendChild(card);
+  updateReminderPopupLayout();
+}
+
+function showReminderPopup(reminder) {
+  const stack = document.getElementById("reminder-popup-stack");
+  if (!stack || document.getElementById(`reminder-popup-${reminder.id}`)) return;
+
+  const card = document.createElement("article");
+  card.id = `reminder-popup-${reminder.id}`;
+  card.className = "reminder-popup";
+  card.setAttribute("role", "alertdialog");
+  card.setAttribute("aria-labelledby", `reminder-popup-title-${reminder.id}`);
+  card.dataset.reminderId = String(reminder.id);
+
+  const assigneeLine = reminder.assignee_name
+    ? `<span>${escapeHtml(reminder.assignee_name)}</span>`
+    : "";
+
+  card.innerHTML = `
+    <span class="reminder-popup-label">Reminder</span>
+    <h3 class="reminder-popup-title" id="reminder-popup-title-${reminder.id}">${escapeHtml(reminder.title)}</h3>
+    <p class="reminder-popup-meta">
+      <span>Due ${escapeHtml(formatDateTime(reminder.remind_at))}</span>
+      ${assigneeLine ? `<br>${assigneeLine}` : ""}
+    </p>
+    <div class="reminder-popup-actions">
+      <div class="reminder-popup-snooze-menu">
+        ${REMINDER_SNOOZE_PRESETS.map(
+          (minutes) =>
+            `<button type="button" class="reminder-popup-btn reminder-popup-btn--snooze" data-action="snooze" data-minutes="${minutes}">${formatSnoozeLabel(minutes)}</button>`
+        ).join("")}
+      </div>
+      <button type="button" class="reminder-popup-btn reminder-popup-btn--dismiss" data-action="dismiss">Dismiss</button>
+    </div>`;
+
+  stack.appendChild(card);
+  focusReminderPopup(reminder.id);
+}
+
+async function dismissReminderPopup(reminderId) {
+  const reminder = findReminderById(reminderId);
+  if (!reminder) {
+    removeReminderPopup(reminderId);
+    return;
+  }
+
+  try {
+    await updateReminder(
+      reminderId,
+      {
+        status: "sent",
+        assigned_to: reminder.assigned_to ?? null,
+      },
+      { silent: true }
+    );
+    removeReminderPopup(reminderId);
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+async function snoozeReminderPopup(reminderId, minutes) {
+  const reminder = findReminderById(reminderId);
+  if (!reminder) {
+    removeReminderPopup(reminderId);
+    return;
+  }
+
+  try {
+    await updateReminder(
+      reminderId,
+      {
+        remind_at: snoozeMinutesFromNow(minutes),
+        status: "pending",
+        assigned_to: reminder.assigned_to ?? null,
+      },
+      { silent: true }
+    );
+    removeReminderPopup(reminderId);
+  } catch (err) {
+    toast(err.message, true);
+  }
+}
+
+function initReminderPopupStack() {
+  const stack = document.getElementById("reminder-popup-stack");
+  if (!stack || stack.dataset.bound === "true") return;
+  stack.dataset.bound = "true";
+
+  stack.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-action]");
+    if (button) {
+      const card = button.closest(".reminder-popup");
+      if (!card) return;
+
+      const reminderId = parseInt(card.dataset.reminderId, 10);
+      const action = button.dataset.action;
+
+      if (action === "dismiss") {
+        dismissReminderPopup(reminderId).catch((err) => toast(err.message, true));
+        return;
+      }
+
+      if (action === "snooze") {
+        const minutes = parseInt(button.dataset.minutes, 10);
+        if (!minutes) return;
+        snoozeReminderPopup(reminderId, minutes).catch((err) => toast(err.message, true));
+      }
+      return;
+    }
+
+    const card = event.target.closest(".reminder-popup");
+    if (!card) return;
+    focusReminderPopup(parseInt(card.dataset.reminderId, 10));
+  });
+}
+
+function hasPendingReminders() {
+  return reminderCache.some((reminder) => reminder.status === "pending");
+}
+
+function isReminderNotificationsEnabled() {
+  return Boolean(settingsCache?.reminder_notifications_enabled);
+}
+
+function stopReminderAlerts() {
+  if (reminderPollTimer) {
+    clearInterval(reminderPollTimer);
+    reminderPollTimer = null;
+  }
+  if (nextReminderTimer) {
+    clearTimeout(nextReminderTimer);
+    nextReminderTimer = null;
+  }
+  notifiedReminderIds.clear();
+  document.querySelectorAll(".reminder-popup").forEach((card) => card.remove());
+  updateReminderPopupLayout();
+}
+
+function syncReminderPolling() {
+  if (reminderPollTimer) {
+    clearInterval(reminderPollTimer);
+    reminderPollTimer = null;
+  }
+
+  if (!isReminderNotificationsEnabled() || !hasPendingReminders()) return;
+
+  reminderPollTimer = setInterval(() => {
+    refreshReminderAlerts().catch((err) => toast(err.message, true));
+  }, REMINDER_FAST_POLL_MS);
+}
+
 async function checkDueReminders() {
-  if (!reminderCache.length) return;
+  if (!isReminderNotificationsEnabled() || !reminderCache.length) return;
 
   const now = new Date();
   for (const reminder of reminderCache) {
@@ -453,35 +776,94 @@ async function checkDueReminders() {
     if (!remindAt || remindAt > now) continue;
 
     notifiedReminderIds.add(reminder.id);
-    toast(`Reminder: ${reminder.title}`);
+    showReminderPopup(reminder);
 
-    if ("Notification" in window && Notification.permission === "granted") {
+    if (
+      document.hidden &&
+      "Notification" in window &&
+      Notification.permission === "granted"
+    ) {
       new Notification("Syntra Reminder", { body: reminder.title });
-    }
-
-    try {
-      await updateReminder(
-        reminder.id,
-        {
-          status: "sent",
-          assigned_to: reminder.assigned_to ?? null,
-        },
-        { silent: true }
-      );
-    } catch (err) {
-      notifiedReminderIds.delete(reminder.id);
-      toast(err.message, true);
     }
   }
 }
 
+function scheduleNextReminderCheck() {
+  if (nextReminderTimer) {
+    clearTimeout(nextReminderTimer);
+    nextReminderTimer = null;
+  }
+
+  if (!isReminderNotificationsEnabled() || !hasPendingReminders()) return;
+
+  const now = Date.now();
+  let delayMs = null;
+  let hasUnnotifiedOverdue = false;
+
+  for (const reminder of reminderCache) {
+    if (reminder.status !== "pending") continue;
+    const remindAt = parseStoredDateTime(reminder.remind_at);
+    if (!remindAt) continue;
+
+    const msUntil = remindAt.getTime() - now;
+    if (msUntil <= 0) {
+      if (!notifiedReminderIds.has(reminder.id)) {
+        hasUnnotifiedOverdue = true;
+      }
+      continue;
+    }
+
+    delayMs = delayMs === null ? msUntil : Math.min(delayMs, msUntil);
+  }
+
+  if (hasUnnotifiedOverdue) {
+    nextReminderTimer = setTimeout(() => {
+      nextReminderTimer = null;
+      refreshReminderAlerts().catch((err) => toast(err.message, true));
+    }, 100);
+    return;
+  }
+
+  if (delayMs === null) return;
+
+  nextReminderTimer = setTimeout(() => {
+    nextReminderTimer = null;
+    refreshReminderAlerts().catch((err) => toast(err.message, true));
+  }, Math.min(Math.max(delayMs + 200, 500), 10000));
+}
+
+async function refreshReminderAlerts() {
+  if (!isReminderNotificationsEnabled()) {
+    stopReminderAlerts();
+    return;
+  }
+  await checkDueReminders();
+  scheduleNextReminderCheck();
+  syncReminderPolling();
+}
+
+function applyReminderAlertsState() {
+  if (isReminderNotificationsEnabled()) {
+    requestNotificationPermission().catch(() => {});
+    refreshReminderAlerts().catch((err) => toast(err.message, true));
+    return;
+  }
+  stopReminderAlerts();
+}
+
 function initReminderAlerts() {
-  requestNotificationPermission().catch(() => {});
-  if (reminderPollTimer) clearInterval(reminderPollTimer);
-  reminderPollTimer = setInterval(() => {
-    checkDueReminders().catch((err) => toast(err.message, true));
-  }, REMINDER_POLL_MS);
-  checkDueReminders().catch((err) => toast(err.message, true));
+  initReminderPopupStack();
+
+  if (!reminderVisibilityBound) {
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden && isReminderNotificationsEnabled()) {
+        refreshReminderAlerts().catch((err) => toast(err.message, true));
+      }
+    });
+    reminderVisibilityBound = true;
+  }
+
+  applyReminderAlertsState();
 }
 
 function setSidebarCollapsed(collapsed) {
@@ -2023,9 +2405,14 @@ async function loadReminders() {
   const reminders = await request(API.reminders);
   reminderCache = reminders;
   const container = document.getElementById("reminders-list");
+  if (!container) {
+    await refreshReminderAlerts();
+    return reminders;
+  }
 
   if (!reminders.length) {
     container.innerHTML = '<p class="empty">No reminders yet. Add one above.</p>';
+    await refreshReminderAlerts();
     return reminders;
   }
 
@@ -2046,6 +2433,7 @@ async function loadReminders() {
         `).join("")}
       </tbody>
     </table>`;
+  await refreshReminderAlerts();
   return reminders;
 }
 
@@ -2068,6 +2456,7 @@ async function loadArchivedGroups() {
 }
 
 async function loadDashboard() {
+  await loadSettings();
   const [tasks, , members] = await Promise.all([
     loadTasks(),
     loadNotes(),
@@ -2297,10 +2686,12 @@ function initApp() {
 
   initConfirmModal();
   initProfileModal();
+  initSettings();
   initSectionCollapse();
   initSidebarToggle();
   initSearch();
   initTaskFilters();
+  initReminderPopupStack();
   loadDashboard()
     .catch((err) => toast(err.message, true))
     .finally(() => initReminderAlerts());

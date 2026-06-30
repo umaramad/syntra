@@ -6,6 +6,12 @@
   <title>Syntra</title>
   <link rel="icon" href="/static/images/syntra-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    try {
+      var savedTheme = localStorage.getItem("syntra-theme");
+      if (savedTheme === "dark") document.documentElement.dataset.theme = "dark";
+    } catch (_err) {}
+  </script>
 </head>
 <body>
   <div class="app" id="app">
@@ -47,6 +53,10 @@
         <a class="nav-link" href="#mcp-console" title="MCP Console">
           <span class="nav-icon" aria-hidden="true">⌘</span>
           <span class="nav-label">MCP Console</span>
+        </a>
+        <a class="nav-link" href="#settings" title="Settings">
+          <span class="nav-icon" aria-hidden="true">⚙</span>
+          <span class="nav-label">Settings</span>
         </a>
       </nav>
     </aside>
@@ -388,10 +398,58 @@
           </div>
           </div>
         </section>
+
+        <section class="section section-collapsible is-collapsed" id="settings">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand Settings section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Settings</h2>
+          </div>
+          <div class="section-content" hidden>
+            <div class="section-body settings-body">
+              <div class="settings-group">
+                <h3 class="settings-group-title">Appearance</h3>
+                <div class="settings-theme-field">
+                  <span class="settings-field-label">Theme</span>
+                  <span class="settings-field-hint">Applies to the entire workspace.</span>
+                  <div class="settings-theme-options" role="radiogroup" aria-label="Theme">
+                    <label class="settings-theme-option">
+                      <input type="radio" name="setting-theme" value="light" class="settings-theme-input">
+                      <span class="settings-theme-card">
+                        <span class="settings-theme-preview settings-theme-preview--light" aria-hidden="true"></span>
+                        <span class="settings-theme-name">Light</span>
+                      </span>
+                    </label>
+                    <label class="settings-theme-option">
+                      <input type="radio" name="setting-theme" value="dark" class="settings-theme-input">
+                      <span class="settings-theme-card">
+                        <span class="settings-theme-preview settings-theme-preview--dark" aria-hidden="true"></span>
+                        <span class="settings-theme-name">Dark</span>
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-group">
+                <h3 class="settings-group-title">Notifications</h3>
+                <label class="settings-toggle-row">
+                  <span class="settings-toggle-copy">
+                    <span class="settings-toggle-label">Reminder notifications</span>
+                    <span class="settings-toggle-hint">Show popup alerts when reminders are due.</span>
+                  </span>
+                  <input type="checkbox" id="setting-reminder-notifications" class="settings-toggle-input">
+                  <span class="settings-toggle-switch" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   </div>
 
+  <div id="reminder-popup-stack" class="reminder-popup-stack" aria-live="polite"></div>
   <div id="toast" class="toast"></div>
 
   <div id="profile-modal" class="profile-modal" hidden aria-hidden="true">

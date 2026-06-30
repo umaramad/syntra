@@ -11,7 +11,19 @@
 
   const SQLITE_UTC_PATTERN = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?$/;
   const ISO_UTC_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?$/;
+  const DATETIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
   const TZ_PATTERN = /[zZ]$|[+-]\d{2}:\d{2}$/;
+
+  function parseLocalDateTimeParts(text) {
+    const [datePart, timePart] = text.split("T");
+    const [year, month, day] = datePart.split("-").map(Number);
+    const timeBits = timePart.split(":");
+    const hour = Number(timeBits[0]);
+    const minute = Number(timeBits[1]);
+    const second = timeBits[2] ? Number(String(timeBits[2]).split(".")[0]) : 0;
+    const date = new Date(year, month - 1, day, hour, minute, second, 0);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
 
   function parseStoredDateTime(value) {
     if (value == null || value === "") return null;
@@ -25,6 +37,10 @@
     if (TZ_PATTERN.test(text)) {
       const date = new Date(text);
       return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    if (DATETIME_LOCAL_PATTERN.test(text)) {
+      return parseLocalDateTimeParts(text);
     }
 
     if (SQLITE_UTC_PATTERN.test(text)) {

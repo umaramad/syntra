@@ -95,3 +95,10 @@ CREATE TABLE IF NOT EXISTS user_profile (
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (team_member_id) REFERENCES team_members(id)
 );
+
+CREATE TABLE IF NOT EXISTS user_settings (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    reminder_notifications_enabled INTEGER NOT NULL DEFAULT 0,
+    theme TEXT NOT NULL DEFAULT 'light',
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
