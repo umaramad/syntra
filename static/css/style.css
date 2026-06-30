@@ -647,17 +647,50 @@ body {
   background: transparent;
 }
 
-.task-group-archive-btn,
+.task-group-actions,
 .archived-group-actions {
   align-self: center;
   margin-right: 0.75rem;
   flex-shrink: 0;
 }
 
+.task-group-actions,
 .archived-group-actions {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.task-group-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.task-group-copy-btn:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
+.task-group-copy-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.task-group-copy-btn svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
 
 .task-group-archive-btn,

@@ -8,6 +8,14 @@ const API = {
   mcp: "/api/mcp",
 };
 
+const {
+  formatDateTime,
+  toLocalDateTimeValue,
+  formatDateInput,
+  isToday,
+  nowFormatted,
+} = window.SyntraDateTime;
+
 const TASK_TOOLS = new Set(["create_task", "list_tasks", "assign_task"]);
 const NOTE_TOOLS = new Set(["create_note", "list_notes"]);
 
@@ -139,14 +147,186 @@ function truncate(str, len) {
   return str.length > len ? str.slice(0, len) + "…" : str;
 }
 
-function formatDateTime(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+function formatTaskStatus(status) {
+  return (status || "—").replace(/_/g, " ");
+}
+
+const COPY_ICON = `
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+  </svg>`;
+
+function renderTaskGroupCopyButton(groupId, groupName, source = "active") {
+  return `<button type="button" class="task-group-copy-btn" data-group-id="${groupId}" data-group-name="${escapeHtml(groupName)}" data-group-source="${source}" aria-label="Copy group tasks" title="Copy tasks with comments">${COPY_ICON}</button>`;
+}
+
+async function ensureTaskComments(taskId) {
+  if (taskCommentsCache[taskId]) return taskCommentsCache[taskId];
+  const comments = await request(`${API.tasks}/${taskId}/comments`);
+  taskCommentsCache[taskId] = comments;
+  return comments;
+}
+
+function formatCommentsPlain(comments) {
+  if (!comments?.length) return "—";
+  return comments
+    .map((entry) => `${formatDateTime(entry.created_at)}: ${entry.comment}`)
+    .join("\n");
+}
+
+function formatCommentsHtml(comments) {
+  if (!comments?.length) return "—";
+  return comments
+    .map(
+      (entry) =>
+        `<div style="margin:0 0 6px 0;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">` +
+        `<span style="color:#6b7280;font-size:10pt;">${escapeHtml(formatDateTime(entry.created_at))}</span><br/>` +
+        `<span style="color:#374151;">${escapeHtml(entry.comment)}</span></div>`
+    )
+    .join("");
+}
+
+function buildGroupTasksClipboardPlain(groupName, tasks, commentsByTaskId) {
+  const exportedAt = nowFormatted();
+  const header = `${groupName}\nExported from Syntra on ${exportedAt}\n`;
+  const columns = ["Title", "Status", "Priority", "Assigned To", "Comments"];
+  const rows = tasks.map((task) => [
+    task.title || "—",
+    formatTaskStatus(task.status),
+    task.priority || "—",
+    task.assignee_name || "—",
+    formatCommentsPlain(commentsByTaskId[task.id]),
+  ]);
+
+  const colWidths = columns.map((col, index) =>
+    Math.max(col.length, ...rows.map((row) => String(row[index]).split("\n")[0].length))
+  );
+
+  const formatRow = (cells) =>
+    cells.map((cell, index) => String(cell).padEnd(colWidths[index])).join("  ");
+
+  const divider = colWidths.map((width) => "-".repeat(width)).join("  ");
+  const body = rows
+    .map((row) => {
+      const firstLine = formatRow(row.map((cell) => String(cell).split("\n")[0]));
+      const commentLines = String(row[4]).split("\n").slice(1);
+      if (!commentLines.length) return firstLine;
+      const indent = " ".repeat(colWidths.slice(0, 4).reduce((sum, width) => sum + width + 2, 0));
+      return [firstLine, ...commentLines.map((line) => indent + line)].join("\n");
+    })
+    .join("\n");
+
+  return `${header}\n${formatRow(columns)}\n${divider}\n${body}`;
+}
+
+function buildGroupTasksClipboardHtml(groupName, tasks, commentsByTaskId) {
+  const exportedAt = nowFormatted();
+  const headerCells = ["Title", "Status", "Priority", "Assigned To", "Comments"]
+    .map(
+      (label) =>
+        `<th style="border:1px solid #2f5597;background-color:#4472c4;color:#ffffff;padding:8px 10px;text-align:left;font-size:11pt;">${label}</th>`
+    )
+    .join("");
+
+  const bodyRows = tasks
+    .map((task, index) => {
+      const rowBg = index % 2 === 0 ? "#ffffff" : "#f3f6fb";
+      const cellStyle =
+        "border:1px solid #bfbfbf;padding:8px 10px;vertical-align:top;font-size:11pt;color:#111827;";
+      return `<tr style="background-color:${rowBg};">
+        <td style="${cellStyle}">${escapeHtml(task.title || "—")}</td>
+        <td style="${cellStyle}">${escapeHtml(formatTaskStatus(task.status))}</td>
+        <td style="${cellStyle}">${escapeHtml(task.priority || "—")}</td>
+        <td style="${cellStyle}">${escapeHtml(task.assignee_name || "—")}</td>
+        <td style="${cellStyle}">${formatCommentsHtml(commentsByTaskId[task.id])}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const fragment = `
+    <div style="font-family:Calibri,Arial,sans-serif;color:#111827;">
+      <p style="margin:0 0 4px 0;font-size:14pt;font-weight:700;">${escapeHtml(groupName)}</p>
+      <p style="margin:0 0 12px 0;font-size:10pt;color:#6b7280;">Exported from Syntra on ${escapeHtml(exportedAt)}</p>
+      <table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:960px;font-family:Calibri,Arial,sans-serif;">
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+
+  return `<!DOCTYPE html><html><body><!--StartFragment-->${fragment}<!--EndFragment--></body></html>`;
+}
+
+async function copyHtmlToClipboard(html, plainText) {
+  if (navigator.clipboard?.write && window.ClipboardItem) {
+    const htmlBlob = new Blob([html], { type: "text/html" });
+    const textBlob = new Blob([plainText], { type: "text/plain" });
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        "text/html": htmlBlob,
+        "text/plain": textBlob,
+      }),
+    ]);
+    return;
+  }
+
+  const container = document.createElement("div");
+  container.contentEditable = "true";
+  container.style.position = "fixed";
+  container.style.left = "-9999px";
+  container.innerHTML = html;
+  document.body.appendChild(container);
+
+  const selection = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(container);
+  selection.removeAllRanges();
+  selection.addRange(range);
+
+  const copied = document.execCommand("copy");
+  selection.removeAllRanges();
+  document.body.removeChild(container);
+
+  if (!copied) {
+    await navigator.clipboard.writeText(plainText);
+  }
+}
+
+async function copyTaskGroup(groupId, groupName, source = "active") {
+  const tasks =
+    source === "archived"
+      ? archivedGroupCache.find((group) => group.id === groupId)?.tasks || []
+      : taskCache.filter((task) => task.group_id === groupId);
+
+  if (!tasks.length) {
+    toast("No tasks to copy");
+    return;
+  }
+
+  const commentsEntries = await Promise.all(
+    tasks.map(async (task) => [task.id, await ensureTaskComments(task.id)])
+  );
+  const commentsByTaskId = Object.fromEntries(commentsEntries);
+  const html = buildGroupTasksClipboardHtml(groupName, tasks, commentsByTaskId);
+  const plain = buildGroupTasksClipboardPlain(groupName, tasks, commentsByTaskId);
+
+  await copyHtmlToClipboard(html, plain);
+  toast(`"${groupName}" copied to clipboard`);
+}
+
+function handleTaskGroupCopyClick(button) {
+  if (button.dataset.copying === "true") return;
+  button.dataset.copying = "true";
+  button.disabled = true;
+  copyTaskGroup(
+    parseInt(button.dataset.groupId, 10),
+    button.dataset.groupName,
+    button.dataset.groupSource || "active"
+  )
+    .catch((err) => toast(err.message, true))
+    .finally(() => {
+      button.dataset.copying = "false";
+      button.disabled = false;
+    });
 }
 
 function updateAssigneeOptions(members) {
@@ -242,9 +422,16 @@ function renderTaskGroupBlock(group, options = {}) {
   const groupTasks = group.tasks;
   const isCollapsed = !expandedSet.has(groupKeyPrefix + groupName);
   const groupKey = encodeURIComponent(groupName);
-  const archiveButton =
-    showArchive && group.id
-      ? `<button type="button" class="task-group-archive-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(groupName)}" aria-label="Archive group" title="Archive group">Archive</button>`
+  const groupActions =
+    group.id
+      ? `<div class="task-group-actions">
+          ${renderTaskGroupCopyButton(group.id, groupName, "active")}
+          ${
+            showArchive
+              ? `<button type="button" class="task-group-archive-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(groupName)}" aria-label="Archive group" title="Archive group">Archive</button>`
+              : ""
+          }
+        </div>`
       : "";
 
   return `
@@ -255,7 +442,7 @@ function renderTaskGroupBlock(group, options = {}) {
           <span class="task-group-name">${escapeHtml(groupName)}</span>
           <span class="task-group-count">${groupTasks.length}</span>
         </button>
-        ${archiveButton}
+        ${groupActions}
       </div>
       <div class="task-group-body"${isCollapsed ? " hidden" : ""}>
         <table>
@@ -302,6 +489,7 @@ function renderArchivedGroupBlock(group) {
         </button>
         <div class="archived-group-actions">
           <span class="archived-badge">Archived</span>
+          ${renderTaskGroupCopyButton(group.id, groupName, "archived")}
           <button type="button" class="task-group-restore-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(groupName)}" data-task-count="${taskCount}" aria-label="Restore group" title="Restore group">Restore</button>
           <button type="button" class="task-group-delete-btn" data-group-id="${group.id}" data-group-name="${escapeHtml(groupName)}" data-task-count="${taskCount}" aria-label="Delete group" title="Delete group">Delete</button>
         </div>
@@ -407,6 +595,13 @@ function bindTaskGroupEvents() {
   container.dataset.groupsBound = "true";
 
   container.addEventListener("click", (event) => {
+    const copyBtn = event.target.closest(".task-group-copy-btn");
+    if (copyBtn) {
+      event.stopPropagation();
+      handleTaskGroupCopyClick(copyBtn);
+      return;
+    }
+
     const archiveBtn = event.target.closest(".task-group-archive-btn");
     if (archiveBtn) {
       event.stopPropagation();
@@ -429,6 +624,13 @@ function bindArchiveGroupEvents() {
   container.dataset.groupsBound = "true";
 
   container.addEventListener("click", (event) => {
+    const copyBtn = event.target.closest(".task-group-copy-btn");
+    if (copyBtn) {
+      event.stopPropagation();
+      handleTaskGroupCopyClick(copyBtn);
+      return;
+    }
+
     const restoreBtn = event.target.closest(".task-group-restore-btn");
     if (restoreBtn) {
       event.stopPropagation();
@@ -578,12 +780,6 @@ async function deleteTaskComment(taskId, commentId) {
   toast("Comment deleted");
 }
 
-function isToday(dateStr) {
-  if (!dateStr) return false;
-  const today = new Date().toISOString().slice(0, 10);
-  return dateStr.slice(0, 10) === today;
-}
-
 function updateDashboardStats(tasks, members) {
   document.getElementById("stat-total-tasks").textContent = tasks.length;
   document.getElementById("stat-completed").textContent =
@@ -698,15 +894,6 @@ function openEditPanel(panelId, focusId) {
   panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
-function toLocalDateTimeValue(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value.slice(0, 16);
-  const offset = date.getTimezoneOffset();
-  const local = new Date(date.getTime() - offset * 60000);
-  return local.toISOString().slice(0, 16);
-}
-
 async function deleteResource(url, label, editPanelId, refresh) {
   const confirmed = await confirmDialog({
     title: `Delete ${label}?`,
@@ -753,11 +940,6 @@ const DELETE_ICON = `
     <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"/>
   </svg>`;
 
-function formatDueDateInput(value) {
-  if (!value) return "";
-  return value.slice(0, 10);
-}
-
 function openTaskEdit(task) {
   closeCreatePanel("task-create-panel");
   document.getElementById("task-edit-id").value = task.id;
@@ -766,7 +948,7 @@ function openTaskEdit(task) {
   document.getElementById("task-edit-assignee").value = task.assigned_to || "";
   document.getElementById("task-edit-status").value = task.status || "pending";
   document.getElementById("task-edit-priority").value = task.priority || "medium";
-  document.getElementById("task-edit-due").value = formatDueDateInput(task.due_date);
+  document.getElementById("task-edit-due").value = formatDateInput(task.due_date);
   highlightRow(task.id);
   openEditPanel("task-edit-panel", "task-edit-title");
 }
@@ -1138,7 +1320,7 @@ async function loadNotes() {
           <tr class="editable-row" data-id="${note.id}" title="Double-click to edit">
             <td>${escapeHtml(note.title)}</td>
             <td>${escapeHtml(truncate(note.content, 80))}</td>
-            <td>${escapeHtml(note.updated_at || note.created_at || "—")}</td>
+            <td>${escapeHtml(formatDateTime(note.updated_at || note.created_at))}</td>
             <td class="actions-cell">${renderDeleteButton(note.id, "note")}</td>
           </tr>
         `).join("")}

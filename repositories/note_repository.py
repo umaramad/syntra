@@ -1,8 +1,8 @@
-from datetime import datetime, timezone
 from typing import Any, Optional
 
 from models.note import Note
 from repositories.base_repository import BaseRepository
+from utils.datetime_utils import utc_now_str
 
 
 class NoteRepository(BaseRepository[Note]):
@@ -33,6 +33,6 @@ class NoteRepository(BaseRepository[Note]):
         if "content" in data:
             fields["content"] = data["content"]
         if fields:
-            fields["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            fields["updated_at"] = utc_now_str()
             self._update(note_id, fields)
         return self.find_by_id(note_id)
