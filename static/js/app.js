@@ -21,6 +21,7 @@ const {
 const TASK_TOOLS = new Set(["create_task", "list_tasks", "assign_task"]);
 const NOTE_TOOLS = new Set(["create_note", "list_notes"]);
 const REMINDER_POLL_MS = 60000;
+const SIDEBAR_STORAGE_KEY = "syntra-sidebar-collapsed";
 
 let taskCache = [];
 let taskGroupCache = [];
@@ -366,6 +367,47 @@ function initReminderAlerts() {
     checkDueReminders().catch((err) => toast(err.message, true));
   }, REMINDER_POLL_MS);
   checkDueReminders().catch((err) => toast(err.message, true));
+}
+
+function setSidebarCollapsed(collapsed) {
+  const app = document.getElementById("app");
+  const toggle = document.getElementById("sidebar-toggle");
+  if (!app) return;
+
+  app.classList.toggle("sidebar-collapsed", collapsed);
+
+  if (toggle) {
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.setAttribute("aria-label", collapsed ? "Expand sidebar" : "Collapse sidebar");
+    toggle.title = collapsed ? "Expand sidebar" : "Collapse sidebar";
+  }
+
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, String(collapsed));
+  } catch (_err) {
+    /* ignore storage errors */
+  }
+}
+
+function initSidebarToggle() {
+  const toggle = document.getElementById("sidebar-toggle");
+  if (!toggle || toggle.dataset.bound === "true") return;
+  toggle.dataset.bound = "true";
+
+  let savedCollapsed = false;
+  try {
+    savedCollapsed = localStorage.getItem(SIDEBAR_STORAGE_KEY) === "true";
+  } catch (_err) {
+    savedCollapsed = false;
+  }
+
+  setSidebarCollapsed(savedCollapsed);
+
+  toggle.addEventListener("click", () => {
+    const app = document.getElementById("app");
+    const collapsed = !app?.classList.contains("sidebar-collapsed");
+    setSidebarCollapsed(collapsed);
+  });
 }
 
 const COPY_ICON = `
@@ -1933,6 +1975,7 @@ function initApp() {
 
   initConfirmModal();
   initSectionCollapse();
+  initSidebarToggle();
   initSearch();
   initTaskFilters();
   loadDashboard()

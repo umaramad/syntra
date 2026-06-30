@@ -4,20 +4,50 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Syntra</title>
+  <link rel="icon" href="/static/images/syntra-mark.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
-  <div class="app">
+  <div class="app" id="app">
     <aside class="sidebar">
-      <div class="logo">Syntra</div>
+      <div class="sidebar-top">
+        <div class="logo">
+          <img src="/static/images/syntra-mark.svg" alt="" class="logo-mark" width="32" height="32">
+          <span class="logo-text">Syntra</span>
+        </div>
+        <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Collapse sidebar" aria-expanded="true" title="Collapse sidebar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+      </div>
       <nav class="sidebar-nav">
-        <a class="nav-link active" href="#dashboard">Dashboard</a>
-        <a class="nav-link" href="#my-tasks">Tasks</a>
-        <a class="nav-link" href="#quick-notes">Notes</a>
-        <a class="nav-link" href="#team-activity">Team</a>
-        <a class="nav-link" href="#reminders">Reminders</a>
-        <a class="nav-link" href="#archive">Archive</a>
-        <a class="nav-link" href="#mcp-console">MCP Console</a>
+        <a class="nav-link active" href="#dashboard" title="Dashboard">
+          <span class="nav-icon" aria-hidden="true">📊</span>
+          <span class="nav-label">Dashboard</span>
+        </a>
+        <a class="nav-link" href="#my-tasks" title="Tasks">
+          <span class="nav-icon" aria-hidden="true">✓</span>
+          <span class="nav-label">Tasks</span>
+        </a>
+        <a class="nav-link" href="#quick-notes" title="Notes">
+          <span class="nav-icon" aria-hidden="true">📝</span>
+          <span class="nav-label">Notes</span>
+        </a>
+        <a class="nav-link" href="#team-activity" title="Team">
+          <span class="nav-icon" aria-hidden="true">👥</span>
+          <span class="nav-label">Team</span>
+        </a>
+        <a class="nav-link" href="#reminders" title="Reminders">
+          <span class="nav-icon" aria-hidden="true">🔔</span>
+          <span class="nav-label">Reminders</span>
+        </a>
+        <a class="nav-link" href="#archive" title="Archive">
+          <span class="nav-icon" aria-hidden="true">📦</span>
+          <span class="nav-label">Archive</span>
+        </a>
+        <a class="nav-link" href="#mcp-console" title="MCP Console">
+          <span class="nav-icon" aria-hidden="true">⌘</span>
+          <span class="nav-label">MCP Console</span>
+        </a>
       </nav>
     </aside>
 

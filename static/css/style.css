@@ -31,6 +31,7 @@
   --radius-sm: 8px;
   --font: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --sidebar-width: 240px;
+  --sidebar-collapsed-width: 76px;
   --transition: 0.18s ease;
 }
 
@@ -66,15 +67,72 @@ body {
   top: 0;
   height: 100vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  transition: width var(--transition), padding var(--transition);
+}
+
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.75rem 1.5rem;
+  margin-bottom: 0.5rem;
 }
 
 .logo {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
   font-size: 1.375rem;
   font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.02em;
-  padding: 0 0.75rem 1.5rem;
-  margin-bottom: 0.5rem;
+}
+
+.logo-mark {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 2px 8px rgba(91, 33, 182, 0.22);
+}
+
+.logo-text {
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity var(--transition), width var(--transition);
+}
+
+.sidebar-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition), color var(--transition), border-color var(--transition), transform var(--transition);
+}
+
+.sidebar-toggle:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.sidebar-toggle svg {
+  width: 1.125rem;
+  height: 1.125rem;
+  fill: currentColor;
+  transition: transform var(--transition);
 }
 
 .sidebar-nav {
@@ -84,14 +142,66 @@ body {
 }
 
 .nav-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.625rem 0.875rem;
   color: var(--text-secondary);
   text-decoration: none;
   border-radius: var(--radius-sm);
   font-size: 0.875rem;
   font-weight: 500;
-  transition: background var(--transition), color var(--transition);
+  transition: background var(--transition), color var(--transition), padding var(--transition);
+}
+
+.nav-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.nav-label {
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity var(--transition), width var(--transition);
+}
+
+.app.sidebar-collapsed .sidebar {
+  width: var(--sidebar-collapsed-width);
+  padding: 1.75rem 0.625rem;
+}
+
+.app.sidebar-collapsed .sidebar-top {
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0 1rem;
+}
+
+.app.sidebar-collapsed .logo-text {
+  opacity: 0;
+  width: 0;
+}
+
+.app.sidebar-collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.app.sidebar-collapsed .nav-link {
+  justify-content: center;
+  padding: 0.625rem;
+}
+
+.app.sidebar-collapsed .nav-label {
+  opacity: 0;
+  width: 0;
+}
+
+.app.sidebar-collapsed .sidebar-toggle {
+  width: 100%;
 }
 
 .nav-link:hover {
@@ -1456,9 +1566,24 @@ body.modal-open {
     border-bottom: 1px solid var(--border-light);
   }
 
-  .logo {
+  .sidebar-top {
+    flex-direction: row;
     padding: 0 0.5rem 1rem;
     margin-bottom: 0;
+  }
+
+  .sidebar-toggle {
+    display: none;
+  }
+
+  .logo {
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  .logo-text {
+    opacity: 1;
+    width: auto;
   }
 
   .sidebar-nav {
@@ -1478,6 +1603,21 @@ body.modal-open {
   .nav-link {
     white-space: nowrap;
     flex-shrink: 0;
+  }
+
+  .nav-label {
+    opacity: 1;
+    width: auto;
+  }
+
+  .app.sidebar-collapsed .sidebar {
+    width: 100%;
+    padding: 1rem;
+  }
+
+  .app.sidebar-collapsed .nav-link {
+    justify-content: flex-start;
+    padding: 0.625rem 0.875rem;
   }
 
   .header {
