@@ -25,6 +25,7 @@ class UserSettingsRepository(BaseRepository[UserSettings]):
 
         existing = self.get_settings()
         enabled = 1 if data["reminder_notifications_enabled"] else 0
+        sound_enabled = 1 if data["reminder_sound_enabled"] else 0
         theme = data["theme"]
 
         with get_db() as conn:
@@ -32,18 +33,21 @@ class UserSettingsRepository(BaseRepository[UserSettings]):
                 conn.execute(
                     """
                     UPDATE user_settings
-                    SET reminder_notifications_enabled = ?, theme = ?, updated_at = ?
+                    SET reminder_notifications_enabled = ?, reminder_sound_enabled = ?,
+                        theme = ?, updated_at = ?
                     WHERE id = ?
                     """,
-                    (enabled, theme, data["updated_at"], _SETTINGS_ID),
+                    (enabled, sound_enabled, theme, data["updated_at"], _SETTINGS_ID),
                 )
             else:
                 conn.execute(
                     """
-                    INSERT INTO user_settings (id, reminder_notifications_enabled, theme, updated_at)
-                    VALUES (?, ?, ?, ?)
+                    INSERT INTO user_settings (
+                        id, reminder_notifications_enabled, reminder_sound_enabled, theme, updated_at
+                    )
+                    VALUES (?, ?, ?, ?, ?)
                     """,
-                    (_SETTINGS_ID, enabled, theme, data["updated_at"]),
+                    (_SETTINGS_ID, enabled, sound_enabled, theme, data["updated_at"]),
                 )
 
         settings = self.get_settings()

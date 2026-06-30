@@ -218,6 +218,7 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS user_settings (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             reminder_notifications_enabled INTEGER NOT NULL DEFAULT 0,
+            reminder_sound_enabled INTEGER NOT NULL DEFAULT 0,
             theme TEXT NOT NULL DEFAULT 'light',
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
@@ -230,6 +231,10 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
     if "theme" not in settings_columns:
         conn.execute(
             "ALTER TABLE user_settings ADD COLUMN theme TEXT NOT NULL DEFAULT 'light'"
+        )
+    if "reminder_sound_enabled" not in settings_columns:
+        conn.execute(
+            "ALTER TABLE user_settings ADD COLUMN reminder_sound_enabled INTEGER NOT NULL DEFAULT 0"
         )
 
 

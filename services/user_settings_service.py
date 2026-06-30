@@ -19,6 +19,7 @@ class UserSettingsService:
         return UserSettings(
             id=1,
             reminder_notifications_enabled=False,
+            reminder_sound_enabled=False,
             theme=DEFAULT_THEME,
             updated_at=None,
         )
@@ -27,6 +28,7 @@ class UserSettingsService:
         self,
         *,
         reminder_notifications_enabled: Optional[bool] = None,
+        reminder_sound_enabled: Optional[bool] = None,
         theme: Optional[str] = None,
     ) -> UserSettings:
         existing = self.get_settings()
@@ -36,6 +38,11 @@ class UserSettingsService:
             if reminder_notifications_enabled is not None
             else existing.reminder_notifications_enabled
         )
+        resolved_sound = (
+            reminder_sound_enabled
+            if reminder_sound_enabled is not None
+            else existing.reminder_sound_enabled
+        )
         resolved_theme = theme if theme is not None else existing.theme
         if resolved_theme not in VALID_THEMES:
             raise ValueError(f"Invalid theme. Must be one of: {VALID_THEMES}")
@@ -43,6 +50,7 @@ class UserSettingsService:
         return self.repository.upsert_settings(
             {
                 "reminder_notifications_enabled": resolved_enabled,
+                "reminder_sound_enabled": resolved_sound,
                 "theme": resolved_theme,
                 "updated_at": utc_now_str(),
             }

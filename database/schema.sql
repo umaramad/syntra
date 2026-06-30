@@ -99,6 +99,7 @@ CREATE TABLE IF NOT EXISTS user_profile (
 CREATE TABLE IF NOT EXISTS user_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     reminder_notifications_enabled INTEGER NOT NULL DEFAULT 0,
+    reminder_sound_enabled INTEGER NOT NULL DEFAULT 0,
     theme TEXT NOT NULL DEFAULT 'light',
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );

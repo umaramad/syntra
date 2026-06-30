@@ -18,8 +18,12 @@ class TaskGroupService:
         if not name.strip():
             raise ValueError("Group name is required")
         normalized = name.strip()
-        existing = self.repository.find_by_name(normalized, active_only=True)
+        existing = self.repository.find_by_name(normalized, active_only=False)
         if existing:
+            if existing.archived:
+                raise ValueError(
+                    f'Group "{normalized}" already exists in Archive. Restore it instead.'
+                )
             raise ValueError("A group with this name already exists")
         return self.repository.create_group(normalized)
 
@@ -41,8 +45,14 @@ class TaskGroupService:
         normalized = name.strip()
         if not normalized:
             raise ValueError("Group name is required")
-        existing = self.repository.find_by_name(normalized, active_only=True)
+        existing = self.repository.find_by_name(normalized, active_only=False)
         if existing:
+            if existing.archived:
+                self.repository.unarchive_group(existing.id)
+                restored = self.repository.find_by_id(existing.id)
+                if not restored:
+                    raise ValueError("Task group not found")
+                return restored
             return existing
         return self.repository.create_group(normalized)
 

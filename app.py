@@ -1,6 +1,7 @@
 from flask import Flask, render_template
 
 import config
+from controllers.backup_controller import register_backup_routes
 from controllers.mcp_controller import register_mcp_routes
 from controllers.note_controller import register_note_routes
 from controllers.profile_controller import register_profile_routes
@@ -25,6 +26,7 @@ def create_app() -> Flask:
     register_team_routes(app)
     register_profile_routes(app)
     register_settings_routes(app)
+    register_backup_routes(app)
     register_reminder_routes(app)
     register_mcp_routes(app)
 

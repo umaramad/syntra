@@ -18,10 +18,15 @@ def register_settings_routes(app: Flask) -> None:
             if "reminder_notifications_enabled" in data:
                 reminder_notifications_enabled = bool(data["reminder_notifications_enabled"])
 
+            reminder_sound_enabled = None
+            if "reminder_sound_enabled" in data:
+                reminder_sound_enabled = bool(data["reminder_sound_enabled"])
+
             theme = data.get("theme") if "theme" in data else None
 
             settings = settings_service.update_settings(
                 reminder_notifications_enabled=reminder_notifications_enabled,
+                reminder_sound_enabled=reminder_sound_enabled,
                 theme=theme,
             )
             return jsonify(settings.to_dict())

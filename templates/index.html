@@ -80,6 +80,23 @@
       </header>
 
       <div class="content" id="dashboard">
+        <div class="onboarding-banner" id="onboarding-banner" hidden>
+          <div class="onboarding-banner-inner">
+            <div class="onboarding-banner-copy">
+              <h2 class="onboarding-banner-title">Welcome to Syntra</h2>
+              <ul class="onboarding-tips">
+                <li><strong>Double-click</strong> a task, note, or standup row to edit it quickly.</li>
+                <li>Enable <strong>reminder notifications</strong> in Settings to get popup alerts when due.</li>
+                <li>Link your <strong>profile</strong> to a team member to use <strong>My Work</strong> and default standup assignee.</li>
+              </ul>
+            </div>
+            <div class="onboarding-banner-actions">
+              <button type="button" class="onboarding-settings-link" id="onboarding-open-settings">Open Settings</button>
+              <button type="button" class="onboarding-dismiss-btn" id="onboarding-dismiss">Got it</button>
+            </div>
+          </div>
+        </div>
+
         <section class="dashboard-cards">
           <div class="stat-card">
             <span class="stat-label">Total Tasks</span>
@@ -473,6 +490,30 @@
                   <input type="checkbox" id="setting-reminder-notifications" class="settings-toggle-input">
                   <span class="settings-toggle-switch" aria-hidden="true"></span>
                 </label>
+                <label class="settings-toggle-row" id="setting-reminder-sound-row">
+                  <span class="settings-toggle-copy">
+                    <span class="settings-toggle-label">Reminder sound</span>
+                    <span class="settings-toggle-hint">Play a short chime when a reminder popup appears.</span>
+                  </span>
+                  <input type="checkbox" id="setting-reminder-sound" class="settings-toggle-input">
+                  <span class="settings-toggle-switch" aria-hidden="true"></span>
+                </label>
+              </div>
+              <div class="settings-group">
+                <h3 class="settings-group-title">Data &amp; backup</h3>
+                <div class="settings-backup-field">
+                  <span class="settings-field-label">Export workspace</span>
+                  <span class="settings-field-hint">Download all tasks, notes, team, reminders, profile, and settings as JSON.</span>
+                  <div class="settings-backup-actions">
+                    <button type="button" class="settings-backup-btn" id="settings-backup-download">
+                      Download backup
+                    </button>
+                    <button type="button" class="settings-backup-btn settings-backup-btn--secondary" id="settings-backup-import">
+                      Import backup
+                    </button>
+                    <input type="file" id="settings-backup-file" accept=".json,application/json" hidden>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -550,6 +591,16 @@
   </div>
 
   <script src="/static/js/datetime.js"></script>
+  <script src="/static/js/syntra/bootstrap.js"></script>
+  <script src="/static/js/syntra/core.js"></script>
+  <script src="/static/js/syntra/ui.js"></script>
+  <script src="/static/js/syntra/profile.js"></script>
+  <script src="/static/js/syntra/settings.js"></script>
+  <script src="/static/js/syntra/search.js"></script>
+  <script src="/static/js/syntra/reminders.js"></script>
+  <script src="/static/js/syntra/tasks.js"></script>
+  <script src="/static/js/syntra/mcp.js"></script>
+  <script src="/static/js/syntra/app.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
