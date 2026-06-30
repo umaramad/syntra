@@ -24,6 +24,10 @@ const TASK_TOOLS = new Set(["create_task", "list_tasks", "assign_task"]);
 const NOTE_TOOLS = new Set(["create_note", "list_notes"]);
 const REMINDER_FAST_POLL_MS = 3000;
 const REMINDER_SNOOZE_PRESETS = [5, 15, 60];
+const TAB_ATTENTION_INTERVAL_MS = 1000;
+const DEFAULT_PAGE_TITLE = "Syntra";
+const DEFAULT_FAVICON_HREF = "/static/images/syntra-mark.svg";
+const ALERT_FAVICON_HREF = "/static/images/syntra-mark-alert.svg";
 const VALID_THEMES = ["light", "dark"];
 const THEME_STORAGE_KEY = "syntra-theme";
 const SIDEBAR_STORAGE_KEY = "syntra-sidebar-collapsed";
@@ -50,6 +54,11 @@ let reminderPollTimer = null;
 let nextReminderTimer = null;
 let reminderPopupZCounter = 0;
 let reminderVisibilityBound = false;
+let tabAttentionTimer = null;
+let tabAttentionListenersBound = false;
+let cachedDefaultTitle = null;
+let cachedFaviconLink = null;
+let cachedDefaultFaviconHref = DEFAULT_FAVICON_HREF;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -556,10 +565,88 @@ function findReminderById(reminderId) {
   return reminderCache.find((entry) => entry.id === reminderId);
 }
 
+function getDefaultPageTitle() {
+  if (cachedDefaultTitle === null) {
+    cachedDefaultTitle = document.title || DEFAULT_PAGE_TITLE;
+  }
+  return cachedDefaultTitle;
+}
+
+function getFaviconLink() {
+  if (!cachedFaviconLink) {
+    cachedFaviconLink = document.querySelector('link[rel="icon"]');
+    if (cachedFaviconLink) {
+      cachedDefaultFaviconHref = cachedFaviconLink.getAttribute("href") || DEFAULT_FAVICON_HREF;
+    }
+  }
+  return cachedFaviconLink;
+}
+
+function hasVisibleReminderPopups() {
+  return document.querySelectorAll(".reminder-popup").length > 0;
+}
+
+function shouldFlashTabForReminders() {
+  if (!isReminderNotificationsEnabled() || !hasVisibleReminderPopups()) {
+    return false;
+  }
+  return document.hidden || !document.hasFocus();
+}
+
+function stopTabAttention() {
+  if (tabAttentionTimer) {
+    clearInterval(tabAttentionTimer);
+    tabAttentionTimer = null;
+  }
+
+  document.title = getDefaultPageTitle();
+  const favicon = getFaviconLink();
+  if (favicon) {
+    favicon.href = cachedDefaultFaviconHref;
+  }
+}
+
+function startTabAttention() {
+  if (tabAttentionTimer) return;
+
+  const favicon = getFaviconLink();
+  let showAlert = true;
+
+  const applyAttentionState = () => {
+    document.title = showAlert
+      ? `\uD83D\uDD14 Reminder — ${getDefaultPageTitle()}`
+      : getDefaultPageTitle();
+    if (favicon) {
+      favicon.href = showAlert ? ALERT_FAVICON_HREF : cachedDefaultFaviconHref;
+    }
+    showAlert = !showAlert;
+  };
+
+  applyAttentionState();
+  tabAttentionTimer = setInterval(applyAttentionState, TAB_ATTENTION_INTERVAL_MS);
+}
+
+function syncTabAttention() {
+  if (shouldFlashTabForReminders()) {
+    startTabAttention();
+    return;
+  }
+  stopTabAttention();
+}
+
+function initTabAttentionListeners() {
+  if (tabAttentionListenersBound) return;
+  tabAttentionListenersBound = true;
+
+  window.addEventListener("focus", () => syncTabAttention());
+  document.addEventListener("visibilitychange", () => syncTabAttention());
+}
+
 function removeReminderPopup(reminderId) {
   notifiedReminderIds.delete(reminderId);
   document.getElementById(`reminder-popup-${reminderId}`)?.remove();
   updateReminderPopupLayout();
+  syncTabAttention();
 }
 
 function updateReminderPopupLayout() {
@@ -573,6 +660,7 @@ function updateReminderPopupLayout() {
   if (!count) {
     stack.style.width = "";
     stack.style.height = "";
+    syncTabAttention();
     return;
   }
 
@@ -649,6 +737,7 @@ function showReminderPopup(reminder) {
 
   stack.appendChild(card);
   focusReminderPopup(reminder.id);
+  syncTabAttention();
 }
 
 async function dismissReminderPopup(reminderId) {
@@ -749,6 +838,7 @@ function stopReminderAlerts() {
   notifiedReminderIds.clear();
   document.querySelectorAll(".reminder-popup").forEach((card) => card.remove());
   updateReminderPopupLayout();
+  stopTabAttention();
 }
 
 function syncReminderPolling() {
@@ -853,6 +943,7 @@ function applyReminderAlertsState() {
 
 function initReminderAlerts() {
   initReminderPopupStack();
+  initTabAttentionListeners();
 
   if (!reminderVisibilityBound) {
     document.addEventListener("visibilitychange", () => {
