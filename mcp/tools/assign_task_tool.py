@@ -13,6 +13,8 @@ class AssignTaskTool(BaseMCPTool):
         "properties": {
             "task_id": {"type": "integer", "description": "Task ID"},
             "assignee_id": {"type": "integer", "description": "Team member ID"},
+            "task_title": {"type": "string", "description": "Task title or substring"},
+            "assignee_name": {"type": "string", "description": "Team member name"},
         },
     }
 
@@ -23,20 +25,31 @@ class AssignTaskTool(BaseMCPTool):
         data = payload or {}
         task_id = data.get("task_id")
         assignee_id = data.get("assignee_id")
+        task_title = data.get("task_title")
+        assignee_name = data.get("assignee_name")
 
-        if task_id is None or assignee_id is None:
+        if task_id is not None:
+            task_id = int(task_id)
+        if assignee_id is not None:
+            assignee_id = int(assignee_id)
+
+        has_task = task_id is not None or task_title
+        has_assignee = assignee_id is not None or assignee_name
+        if not has_task and not has_assignee and not input_text.strip():
             return {
-                "message": "Task ID and assignee ID are required for assignment.",
+                "message": "Provide task and assignee details to assign a task.",
                 "input_text": input_text.strip(),
                 "payload": data,
             }
 
-        task = self.task_service.update_task(
-            int(task_id),
-            assigned_to=int(assignee_id),
-            update_assignee=True,
-        )
-        if not task:
-            return {"error": "Task not found"}
-
-        return task.to_dict()
+        try:
+            task = self.task_service.assign_task(
+                task_id=task_id,
+                assignee_id=assignee_id,
+                assignee_name=assignee_name,
+                task_title=task_title,
+                input_text=input_text,
+            )
+            return task.to_dict()
+        except ValueError as exc:
+            return {"error": str(exc)}

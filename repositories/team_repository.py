@@ -20,6 +20,17 @@ class TeamRepository(BaseRepository[TeamMember]):
         )
         return self.find_by_id(member_id)
 
+    def find_by_name_match(self, name: str) -> list[TeamMember]:
+        needle = name.strip().lower()
+        if not needle:
+            return []
+
+        members = self.find_all()
+        exact = [member for member in members if (member.name or "").lower() == needle]
+        if exact:
+            return exact
+        return [member for member in members if needle in (member.name or "").lower()]
+
     def find_by_email(self, email: str) -> Optional[TeamMember]:
         from database.db import get_db
 

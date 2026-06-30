@@ -48,6 +48,10 @@
             <span class="stat-value" id="stat-due-today">0</span>
           </div>
           <div class="stat-card">
+            <span class="stat-label">Overdue</span>
+            <span class="stat-value" id="stat-overdue">0</span>
+          </div>
+          <div class="stat-card">
             <span class="stat-label">Team Members</span>
             <span class="stat-value" id="stat-team-members">0</span>
           </div>
@@ -74,6 +78,7 @@
               <select id="task-assignee" class="inline-input">
                 <option value="">Assign to team member</option>
               </select>
+              <input type="date" id="task-due" class="inline-input" title="Due date">
               <button type="submit" class="inline-submit">Create</button>
               <button type="button" class="inline-cancel" data-panel="task-create-panel">Cancel</button>
             </form>
@@ -104,6 +109,27 @@
               <button type="submit" class="inline-submit">Save</button>
               <button type="button" class="inline-cancel" data-panel="task-edit-panel">Cancel</button>
             </form>
+          </div>
+          <div class="task-filters" id="task-filters">
+            <select id="task-filter-status" class="task-filter-select" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="in_progress">In progress</option>
+              <option value="done">Done</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+            <select id="task-filter-priority" class="task-filter-select" aria-label="Filter by priority">
+              <option value="">All priorities</option>
+              <option value="high_plus">High + Urgent</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+            <select id="task-filter-assignee" class="task-filter-select" aria-label="Filter by assignee">
+              <option value="">All assignees</option>
+              <option value="unassigned">Unassigned</option>
+            </select>
           </div>
           <div class="section-body" id="tasks-list">
             <p class="empty">Loading tasks...</p>

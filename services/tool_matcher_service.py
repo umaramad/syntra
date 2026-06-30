@@ -98,6 +98,8 @@ class ToolMatcherService:
             return {"title": title or "Untitled note", "content": ""}
 
         if tool_key == "assign_task":
+            from services.task_service import TaskService
+
             normalized = query.lower()
             remainder = normalized
             for pattern in patterns:
@@ -113,7 +115,14 @@ class ToolMatcherService:
                         task_id = int(token)
                     elif assignee_id is None:
                         assignee_id = int(token)
-            return {"task_id": task_id, "assignee_id": assignee_id}
+
+            task_title, assignee_name = TaskService.parse_assign_input(query)
+            return {
+                "task_id": task_id,
+                "assignee_id": assignee_id,
+                "task_title": task_title,
+                "assignee_name": assignee_name,
+            }
 
         return {}
 

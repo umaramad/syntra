@@ -200,7 +200,7 @@ body {
 
 .dashboard-cards {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 1.25rem;
   margin-bottom: 1.75rem;
 }
@@ -241,7 +241,91 @@ body {
 .stat-card:nth-child(1) .stat-value { color: var(--primary); }
 .stat-card:nth-child(2) .stat-value { color: var(--success); }
 .stat-card:nth-child(3) .stat-value { color: #d97706; }
-.stat-card:nth-child(4) .stat-value { color: #2563eb; }
+.stat-card:nth-child(4) .stat-value { color: #dc2626; }
+.stat-card:nth-child(5) .stat-value { color: #2563eb; }
+
+.task-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0 1rem 0.75rem;
+}
+
+.task-filter-select {
+  min-width: 140px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  font-size: 0.8125rem;
+  font-family: inherit;
+  color: var(--text);
+}
+
+.task-filter-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.editable-row.is-done td:nth-child(2) {
+  opacity: 0.65;
+}
+
+.editable-row.is-done .task-title-cell {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+.task-done-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.task-done-toggle:hover {
+  border-color: var(--success);
+  background: #f0fdf4;
+}
+
+.task-done-toggle.is-done {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.due-date {
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.due-overdue {
+  color: #dc2626;
+  font-weight: 600;
+}
+
+.due-today {
+  color: #d97706;
+  font-weight: 600;
+}
+
+.search-match td {
+  background: #fffbeb;
+}
+
+.search-empty-note {
+  padding: 0.75rem 1rem;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
 
 /* Section cards */
 
@@ -482,6 +566,11 @@ body {
   width: 88px;
   text-align: right;
   white-space: nowrap;
+}
+
+.done-col {
+  width: 40px;
+  text-align: center;
 }
 
 .actions-cell .row-delete-btn,

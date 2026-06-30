@@ -78,6 +78,11 @@
     return String(dateStr).slice(0, 10) === localDateString();
   }
 
+  function isOverdue(dateStr) {
+    if (!dateStr) return false;
+    return String(dateStr).slice(0, 10) < localDateString();
+  }
+
   function nowFormatted() {
     return formatDateTime(new Date());
   }
@@ -89,6 +94,7 @@
     formatDateInput,
     localDateString,
     isToday,
+    isOverdue,
     nowFormatted,
   };
 })(window);

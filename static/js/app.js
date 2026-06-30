@@ -13,11 +13,14 @@ const {
   toLocalDateTimeValue,
   formatDateInput,
   isToday,
+  isOverdue,
   nowFormatted,
+  parseStoredDateTime,
 } = window.SyntraDateTime;
 
 const TASK_TOOLS = new Set(["create_task", "list_tasks", "assign_task"]);
 const NOTE_TOOLS = new Set(["create_note", "list_notes"]);
+const REMINDER_POLL_MS = 60000;
 
 let taskCache = [];
 let taskGroupCache = [];
@@ -29,6 +32,10 @@ const taskCommentsCache = {};
 let noteCache = [];
 let teamCache = [];
 let reminderCache = [];
+let searchQuery = "";
+const taskFilters = { status: "", priority: "", assignee: "" };
+const notifiedReminderIds = new Set();
+let reminderPollTimer = null;
 
 async function request(url, options = {}) {
   const res = await fetch(url, {
@@ -149,6 +156,216 @@ function truncate(str, len) {
 
 function formatTaskStatus(status) {
   return (status || "—").replace(/_/g, " ");
+}
+
+function normalizeSearchQuery(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function taskMatchesSearch(task, query) {
+  if (!query) return true;
+  const fields = [
+    task.title,
+    task.group_name,
+    task.assignee_name,
+    task.priority,
+    task.status,
+    task.description,
+  ];
+  if (fields.some((field) => String(field || "").toLowerCase().includes(query))) {
+    return true;
+  }
+  const comments = taskCommentsCache[task.id] || [];
+  return comments.some((entry) => String(entry.comment || "").toLowerCase().includes(query));
+}
+
+function noteMatchesSearch(note, query) {
+  if (!query) return true;
+  return [note.title, note.content]
+    .some((field) => String(field || "").toLowerCase().includes(query));
+}
+
+function memberMatchesSearch(member, query) {
+  if (!query) return true;
+  return [member.name, member.role, member.email, member.status]
+    .some((field) => String(field || "").toLowerCase().includes(query));
+}
+
+function getFilteredTasks() {
+  let tasks = [...taskCache];
+
+  if (taskFilters.status) {
+    tasks = tasks.filter((task) => task.status === taskFilters.status);
+  }
+
+  if (taskFilters.priority === "high_plus") {
+    tasks = tasks.filter((task) => task.priority === "high" || task.priority === "urgent");
+  } else if (taskFilters.priority) {
+    tasks = tasks.filter((task) => task.priority === taskFilters.priority);
+  }
+
+  if (taskFilters.assignee === "unassigned") {
+    tasks = tasks.filter((task) => !task.assigned_to);
+  } else if (taskFilters.assignee) {
+    tasks = tasks.filter((task) => String(task.assigned_to) === taskFilters.assignee);
+  }
+
+  const query = normalizeSearchQuery(searchQuery);
+  if (query) {
+    tasks = tasks.filter((task) => taskMatchesSearch(task, query));
+  }
+
+  return tasks;
+}
+
+function getFilteredNotes() {
+  const query = normalizeSearchQuery(searchQuery);
+  if (!query) return noteCache;
+  return noteCache.filter((note) => noteMatchesSearch(note, query));
+}
+
+function getFilteredTeam() {
+  const query = normalizeSearchQuery(searchQuery);
+  if (!query) return teamCache;
+  return teamCache.filter((member) => memberMatchesSearch(member, query));
+}
+
+function renderDueDateCell(task) {
+  if (!task.due_date) return "—";
+  const dateText = formatDateInput(task.due_date);
+  let className = "due-date";
+  if (task.status !== "done" && task.status !== "cancelled") {
+    if (isOverdue(task.due_date)) className += " due-overdue";
+    else if (isToday(task.due_date)) className += " due-today";
+  }
+  return `<span class="${className}">${escapeHtml(dateText)}</span>`;
+}
+
+function scrollToFirstSearchMatch() {
+  const query = normalizeSearchQuery(searchQuery);
+  if (!query) return;
+
+  const sections = [
+    { id: "my-tasks", hasMatch: getFilteredTasks().length > 0 },
+    { id: "quick-notes", hasMatch: getFilteredNotes().length > 0 },
+    { id: "team-activity", hasMatch: getFilteredTeam().length > 0 },
+  ];
+  const firstMatch = sections.find((section) => section.hasMatch);
+  if (!firstMatch) return;
+
+  expandSection(firstMatch.id);
+  document.getElementById(firstMatch.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function applyGlobalSearch() {
+  renderTasksFromCache();
+  renderNotesFromCache();
+  renderTeamFromCache();
+  scrollToFirstSearchMatch();
+}
+
+function updateTaskFilterAssigneeOptions() {
+  const select = document.getElementById("task-filter-assignee");
+  if (!select) return;
+
+  const current = select.value;
+  select.innerHTML =
+    '<option value="">All assignees</option>' +
+    '<option value="unassigned">Unassigned</option>' +
+    teamCache
+      .map((member) => `<option value="${member.id}">${escapeHtml(member.name)}</option>`)
+      .join("");
+  select.value = current;
+}
+
+function initSearch() {
+  const input = document.querySelector(".search-box");
+  if (!input || input.dataset.bound === "true") return;
+  input.dataset.bound = "true";
+
+  let debounceTimer = null;
+  input.addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      searchQuery = input.value;
+      applyGlobalSearch();
+    }, 200);
+  });
+}
+
+function initTaskFilters() {
+  const container = document.getElementById("task-filters");
+  if (!container || container.dataset.bound === "true") return;
+  container.dataset.bound = "true";
+
+  const statusSelect = document.getElementById("task-filter-status");
+  const prioritySelect = document.getElementById("task-filter-priority");
+  const assigneeSelect = document.getElementById("task-filter-assignee");
+
+  statusSelect?.addEventListener("change", () => {
+    taskFilters.status = statusSelect.value;
+    renderTasksFromCache();
+  });
+
+  prioritySelect?.addEventListener("change", () => {
+    taskFilters.priority = prioritySelect.value;
+    renderTasksFromCache();
+  });
+
+  assigneeSelect?.addEventListener("change", () => {
+    taskFilters.assignee = assigneeSelect.value;
+    renderTasksFromCache();
+  });
+}
+
+async function requestNotificationPermission() {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "default") {
+    await Notification.requestPermission();
+  }
+}
+
+async function checkDueReminders() {
+  if (!reminderCache.length) return;
+
+  const now = new Date();
+  for (const reminder of reminderCache) {
+    if (reminder.status !== "pending") continue;
+    if (notifiedReminderIds.has(reminder.id)) continue;
+
+    const remindAt = parseStoredDateTime(reminder.remind_at);
+    if (!remindAt || remindAt > now) continue;
+
+    notifiedReminderIds.add(reminder.id);
+    toast(`Reminder: ${reminder.title}`);
+
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification("Syntra Reminder", { body: reminder.title });
+    }
+
+    try {
+      await updateReminder(
+        reminder.id,
+        {
+          status: "sent",
+          assigned_to: reminder.assigned_to ?? null,
+        },
+        { silent: true }
+      );
+    } catch (err) {
+      notifiedReminderIds.delete(reminder.id);
+      toast(err.message, true);
+    }
+  }
+}
+
+function initReminderAlerts() {
+  requestNotificationPermission().catch(() => {});
+  if (reminderPollTimer) clearInterval(reminderPollTimer);
+  reminderPollTimer = setInterval(() => {
+    checkDueReminders().catch((err) => toast(err.message, true));
+  }, REMINDER_POLL_MS);
+  checkDueReminders().catch((err) => toast(err.message, true));
 }
 
 const COPY_ICON = `
@@ -448,7 +665,7 @@ function renderTaskGroupBlock(group, options = {}) {
         <table>
           <thead>
             <tr>
-              <th>Title</th><th>Status</th><th>Priority</th><th>Assigned To</th><th>Created</th><th></th>
+              <th class="done-col"></th><th>Title</th><th>Status</th><th>Priority</th><th>Assigned To</th><th>Due</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -663,14 +880,20 @@ function bindArchiveGroupEvents() {
 function renderTaskRow(task) {
   const commentsOpen = expandedTaskComments.has(task.id);
   const commentCount = task.comment_count || 0;
+  const isDone = task.status === "done";
+  const query = normalizeSearchQuery(searchQuery);
+  const isSearchMatch = query && taskMatchesSearch(task, query);
 
   return `
-    <tr class="editable-row" data-id="${task.id}" title="Double-click to edit">
-      <td>${escapeHtml(task.title)}</td>
+    <tr class="editable-row${isDone ? " is-done" : ""}${isSearchMatch ? " search-match" : ""}" data-id="${task.id}" title="Double-click to edit">
+      <td class="done-col">
+        <button type="button" class="task-done-toggle${isDone ? " is-done" : ""}" data-id="${task.id}" aria-label="${isDone ? "Mark as pending" : "Mark as done"}" title="${isDone ? "Mark as pending" : "Mark as done"}">${isDone ? "✓" : ""}</button>
+      </td>
+      <td class="task-title-cell">${escapeHtml(task.title)}</td>
       <td><span class="status status-${task.status}">${task.status.replace("_", " ")}</span></td>
       <td>${escapeHtml(task.priority || "—")}</td>
       <td>${escapeHtml(task.assignee_name || "—")}</td>
-      <td>${escapeHtml(formatDateTime(task.created_at))}</td>
+      <td>${renderDueDateCell(task)}</td>
       <td class="actions-cell">
         <button type="button" class="task-comments-btn" data-id="${task.id}" aria-label="View comments" title="Comments">
           <span class="task-comments-icon" aria-hidden="true">💬</span>
@@ -680,7 +903,7 @@ function renderTaskRow(task) {
       </td>
     </tr>
     <tr class="task-comments-row" id="task-comments-${task.id}"${commentsOpen ? "" : " hidden"}>
-      <td colspan="6">
+      <td colspan="7">
         <div class="task-comments-panel" data-task-id="${task.id}">
           <div class="task-comments-list" id="task-comments-list-${task.id}">
             ${commentsOpen ? '<p class="empty">Loading comments...</p>' : ""}
@@ -785,7 +1008,13 @@ function updateDashboardStats(tasks, members) {
   document.getElementById("stat-completed").textContent =
     tasks.filter((task) => task.status === "done").length;
   document.getElementById("stat-due-today").textContent =
-    tasks.filter((task) => isToday(task.due_date)).length;
+    tasks.filter((task) => isToday(task.due_date) && task.status !== "done" && task.status !== "cancelled").length;
+  const overdueEl = document.getElementById("stat-overdue");
+  if (overdueEl) {
+    overdueEl.textContent = tasks.filter(
+      (task) => isOverdue(task.due_date) && task.status !== "done" && task.status !== "cancelled"
+    ).length;
+  }
   document.getElementById("stat-team-members").textContent = members.length;
 }
 
@@ -983,6 +1212,21 @@ function openReminderEdit(reminder) {
   openEditPanel("reminder-edit-panel", "reminder-edit-title");
 }
 
+async function markTaskDone(taskId, done) {
+  if (done) {
+    await request(`${API.tasks}/${taskId}/done`, { method: "POST" });
+    toast("Task marked done");
+  } else {
+    await request(`${API.tasks}/${taskId}`, {
+      method: "PUT",
+      body: JSON.stringify({ status: "pending" }),
+    });
+    toast("Task marked pending");
+  }
+  const tasks = await loadTasks();
+  updateDashboardStats(tasks, teamCache);
+}
+
 async function updateTask(taskId, payload) {
   const task = await request(`${API.tasks}/${taskId}`, {
     method: "PUT",
@@ -1036,13 +1280,16 @@ async function deleteTeamMember(memberId) {
   await deleteResource(`${API.team}/${memberId}`, "team member", "team-edit-panel", loadDashboard);
 }
 
-async function updateReminder(reminderId, payload) {
+async function updateReminder(reminderId, payload, options = {}) {
+  const { silent = false } = options;
   const reminder = await request(`${API.reminders}/${reminderId}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
-  toast("Reminder updated");
-  closeCreatePanel("reminder-edit-panel");
+  if (!silent) {
+    toast("Reminder updated");
+    closeCreatePanel("reminder-edit-panel");
+  }
   await loadReminders();
   return reminder;
 }
@@ -1057,6 +1304,16 @@ function bindTaskListEvents() {
   container.dataset.bound = "true";
 
   container.addEventListener("click", (event) => {
+    const doneBtn = event.target.closest(".task-done-toggle");
+    if (doneBtn) {
+      event.stopPropagation();
+      const taskId = parseInt(doneBtn.dataset.id, 10);
+      const task = taskCache.find((entry) => entry.id === taskId);
+      const willMarkDone = task?.status !== "done";
+      markTaskDone(taskId, willMarkDone).catch((err) => toast(err.message, true));
+      return;
+    }
+
     const deleteBtn = event.target.closest(".row-delete-btn");
     if (deleteBtn) {
       event.stopPropagation();
@@ -1082,7 +1339,7 @@ function bindTaskListEvents() {
   });
 
   container.addEventListener("dblclick", (event) => {
-    if (event.target.closest(".row-delete-btn, .task-comments-btn, .task-comment-delete, .task-comment-form")) {
+    if (event.target.closest(".row-delete-btn, .task-done-toggle, .task-comments-btn, .task-comment-delete, .task-comment-form")) {
       return;
     }
     const row = event.target.closest(".editable-row");
@@ -1152,6 +1409,7 @@ function initCreatePanels() {
           title: document.getElementById("task-title").value.trim(),
           ...resolveCreateGroupPayload(),
           assigned_to: assignee ? parseInt(assignee, 10) : null,
+          due_date: document.getElementById("task-due").value || null,
         });
         taskForm.reset();
         syncTaskGroupNewField();
@@ -1188,6 +1446,7 @@ function initCreatePanels() {
   bindTaskListEvents();
   bindTaskGroupEvents();
   bindArchiveGroupEvents();
+  initTaskFilters();
   bindNoteListEvents();
   bindTeamListEvents();
   bindReminderListEvents();
@@ -1278,13 +1537,27 @@ function initCreatePanels() {
 }
 
 async function loadTasks() {
-  const tasks = await request(API.tasks);
-  taskCache = tasks;
+  taskCache = await request(API.tasks);
+  renderTasksFromCache();
+  return taskCache;
+}
+
+function renderTasksFromCache() {
   const container = document.getElementById("tasks-list");
+  if (!container) return;
+
+  const tasks = getFilteredTasks();
+  const hasFilters =
+    taskFilters.status || taskFilters.priority || taskFilters.assignee || normalizeSearchQuery(searchQuery);
+
+  if (!taskCache.length) {
+    container.innerHTML = '<p class="empty">No tasks yet. Click + to add one.</p>';
+    return;
+  }
 
   if (!tasks.length) {
-    container.innerHTML = '<p class="empty">No tasks yet. Click + to add one.</p>';
-    return tasks;
+    container.innerHTML = `<p class="empty">${hasFilters ? "No tasks match your filters or search." : "No tasks yet. Click + to add one."}</p>`;
+    return;
   }
 
   container.innerHTML = groupTasksByGroup(tasks)
@@ -1296,18 +1569,29 @@ async function loadTasks() {
       loadTaskComments(taskId).catch((err) => toast(err.message, true));
     }
   });
-
-  return tasks;
 }
 
 async function loadNotes() {
-  const notes = await request(API.notes);
-  noteCache = notes;
+  noteCache = await request(API.notes);
+  renderNotesFromCache();
+  return noteCache;
+}
+
+function renderNotesFromCache() {
   const container = document.getElementById("notes-list");
+  if (!container) return;
+
+  const notes = getFilteredNotes();
+  const query = normalizeSearchQuery(searchQuery);
+
+  if (!noteCache.length) {
+    container.innerHTML = '<p class="empty">No notes yet. Click + to add one.</p>';
+    return;
+  }
 
   if (!notes.length) {
-    container.innerHTML = '<p class="empty">No notes yet. Click + to add one.</p>';
-    return notes;
+    container.innerHTML = '<p class="empty">No notes match your search.</p>';
+    return;
   }
 
   container.innerHTML = `
@@ -1317,7 +1601,7 @@ async function loadNotes() {
       </thead>
       <tbody>
         ${notes.map((note) => `
-          <tr class="editable-row" data-id="${note.id}" title="Double-click to edit">
+          <tr class="editable-row${query && noteMatchesSearch(note, query) ? " search-match" : ""}" data-id="${note.id}" title="Double-click to edit">
             <td>${escapeHtml(note.title)}</td>
             <td>${escapeHtml(truncate(note.content, 80))}</td>
             <td>${escapeHtml(formatDateTime(note.updated_at || note.created_at))}</td>
@@ -1326,21 +1610,32 @@ async function loadNotes() {
         `).join("")}
       </tbody>
     </table>`;
-  return notes;
 }
 
 async function loadTeam() {
-  const members = await request(API.team);
-  teamCache = members;
-  const container = document.getElementById("team-list");
+  teamCache = await request(API.team);
+  updateAssigneeOptions(teamCache);
+  updateTaskFilterAssigneeOptions();
+  renderTeamFromCache();
+  return teamCache;
+}
 
-  if (!members.length) {
+function renderTeamFromCache() {
+  const container = document.getElementById("team-list");
+  if (!container) return;
+
+  const members = getFilteredTeam();
+  const query = normalizeSearchQuery(searchQuery);
+
+  if (!teamCache.length) {
     container.innerHTML = '<p class="empty">No team members yet. Click + to add one.</p>';
-    updateAssigneeOptions([]);
-    return members;
+    return;
   }
 
-  updateAssigneeOptions(members);
+  if (!members.length) {
+    container.innerHTML = '<p class="empty">No team members match your search.</p>';
+    return;
+  }
 
   container.innerHTML = `
     <table>
@@ -1349,7 +1644,7 @@ async function loadTeam() {
       </thead>
       <tbody>
         ${members.map((member) => `
-          <tr class="editable-row" data-id="${member.id}" title="Double-click to edit">
+          <tr class="editable-row${query && memberMatchesSearch(member, query) ? " search-match" : ""}" data-id="${member.id}" title="Double-click to edit">
             <td>${escapeHtml(member.name)}</td>
             <td>${escapeHtml(member.role || "—")}</td>
             <td>${escapeHtml(member.email || "—")}</td>
@@ -1359,7 +1654,6 @@ async function loadTeam() {
         `).join("")}
       </tbody>
     </table>`;
-  return members;
 }
 
 async function loadReminders() {
@@ -1639,7 +1933,11 @@ function initApp() {
 
   initConfirmModal();
   initSectionCollapse();
-  loadDashboard().catch((err) => toast(err.message, true));
+  initSearch();
+  initTaskFilters();
+  loadDashboard()
+    .catch((err) => toast(err.message, true))
+    .finally(() => initReminderAlerts());
   initCreatePanels();
 }
 
