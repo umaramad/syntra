@@ -1,0 +1,13 @@
+# Python 3.9+ required (stdlib only otherwise: sqlite3, dataclasses, typing, etc.)
+# Direct dependency
+Flask==3.0.3
+
+# Flask runtime dependencies (pinned for reproducible installs on a new machine)
+blinker==1.9.0
+click==8.1.8
+importlib_metadata==8.7.1
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+Werkzeug==3.1.8
+zipp==3.23.1

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Syntra</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">Syntra</div>
+      <nav class="sidebar-nav">
+        <a class="nav-link active" href="#dashboard">Dashboard</a>
+        <a class="nav-link" href="#my-tasks">Tasks</a>
+        <a class="nav-link" href="#quick-notes">Notes</a>
+        <a class="nav-link" href="#team-activity">Team</a>
+        <a class="nav-link" href="#reminders">Reminders</a>
+        <a class="nav-link" href="#archive">Archive</a>
+        <a class="nav-link" href="#mcp-console">MCP Console</a>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <div class="header-greeting">
+          <h1>Good morning</h1>
+          <p class="header-subtitle">Here is your workspace overview</p>
+        </div>
+        <div class="header-actions">
+          <input type="search" class="search-box" placeholder="Search tasks, notes, team...">
+          <div class="profile">User</div>
+        </div>
+      </header>
+
+      <div class="content" id="dashboard">
+        <section class="dashboard-cards">
+          <div class="stat-card">
+            <span class="stat-label">Total Tasks</span>
+            <span class="stat-value" id="stat-total-tasks">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Completed</span>
+            <span class="stat-value" id="stat-completed">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Due Today</span>
+            <span class="stat-value" id="stat-due-today">0</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-label">Team Members</span>
+            <span class="stat-value" id="stat-team-members">0</span>
+          </div>
+        </section>
+
+        <section class="section section-collapsible is-collapsed" id="my-tasks">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand My Tasks section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">My Tasks</h2>
+            <div class="section-header-actions">
+              <button type="button" class="section-add-btn" id="task-add-toggle" aria-label="Add task">+</button>
+            </div>
+          </div>
+          <div class="section-content" hidden>
+          <div class="create-panel" id="task-create-panel" hidden>
+            <form id="task-form" class="inline-create-form">
+              <select id="task-group" class="inline-input" required>
+                <option value="">Select group</option>
+              </select>
+              <input type="text" id="task-group-new" class="inline-input" placeholder="Enter new group name" hidden>
+              <input type="text" id="task-title" class="inline-input" placeholder="Task title" required>
+              <select id="task-assignee" class="inline-input">
+                <option value="">Assign to team member</option>
+              </select>
+              <button type="submit" class="inline-submit">Create</button>
+              <button type="button" class="inline-cancel" data-panel="task-create-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="create-panel edit-panel" id="task-edit-panel" hidden>
+            <form id="task-edit-form" class="inline-create-form">
+              <input type="hidden" id="task-edit-id">
+              <select id="task-edit-group" class="inline-input" required>
+                <option value="">Select group</option>
+              </select>
+              <input type="text" id="task-edit-title" class="inline-input" placeholder="Task title" required>
+              <select id="task-edit-assignee" class="inline-input">
+                <option value="">Assign to team member</option>
+              </select>
+              <select id="task-edit-status" class="inline-input">
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="done">Done</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+              <select id="task-edit-priority" class="inline-input">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+              <input type="date" id="task-edit-due" class="inline-input">
+              <button type="submit" class="inline-submit">Save</button>
+              <button type="button" class="inline-cancel" data-panel="task-edit-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="section-body" id="tasks-list">
+            <p class="empty">Loading tasks...</p>
+          </div>
+          </div>
+        </section>
+
+        <section class="section section-collapsible is-collapsed" id="quick-notes">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand Quick Notes section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Quick Notes</h2>
+            <div class="section-header-actions">
+              <button type="button" class="section-add-btn" id="note-add-toggle" aria-label="Add note">+</button>
+            </div>
+          </div>
+          <div class="section-content" hidden>
+          <div class="create-panel" id="note-create-panel" hidden>
+            <form id="note-form" class="inline-create-form">
+              <input type="text" id="note-title" class="inline-input" placeholder="Note title" required>
+              <input type="text" id="note-content" class="inline-input" placeholder="Short note (optional)">
+              <button type="submit" class="inline-submit">Create</button>
+              <button type="button" class="inline-cancel" data-panel="note-create-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="create-panel edit-panel" id="note-edit-panel" hidden>
+            <form id="note-edit-form" class="inline-create-form">
+              <input type="hidden" id="note-edit-id">
+              <input type="text" id="note-edit-title" class="inline-input" placeholder="Note title" required>
+              <input type="text" id="note-edit-content" class="inline-input" placeholder="Note content">
+              <button type="submit" class="inline-submit">Save</button>
+              <button type="button" class="inline-cancel" data-panel="note-edit-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="section-body" id="notes-list">
+            <p class="empty">Loading notes...</p>
+          </div>
+          </div>
+        </section>
+
+        <section class="section section-collapsible is-collapsed" id="team-activity">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand Team Activity section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Team Activity</h2>
+            <div class="section-header-actions">
+              <button type="button" class="section-add-btn" id="team-add-toggle" aria-label="Add team member">+</button>
+            </div>
+          </div>
+          <div class="section-content" hidden>
+          <div class="create-panel" id="team-create-panel" hidden>
+            <form id="team-form" class="inline-create-form">
+              <input type="text" id="team-name" class="inline-input" placeholder="Team member name" required>
+              <button type="submit" class="inline-submit">Add</button>
+              <button type="button" class="inline-cancel" data-panel="team-create-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="create-panel edit-panel" id="team-edit-panel" hidden>
+            <form id="team-edit-form" class="inline-create-form">
+              <input type="hidden" id="team-edit-id">
+              <input type="text" id="team-edit-name" class="inline-input" placeholder="Name" required>
+              <input type="text" id="team-edit-role" class="inline-input" placeholder="Role (optional)">
+              <input type="email" id="team-edit-email" class="inline-input" placeholder="Email (optional)">
+              <select id="team-edit-status" class="inline-input">
+                <option value="offline">Offline</option>
+                <option value="online">Online</option>
+                <option value="away">Away</option>
+              </select>
+              <button type="submit" class="inline-submit">Save</button>
+              <button type="button" class="inline-cancel" data-panel="team-edit-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="section-body" id="team-list">
+            <p class="empty">Loading team...</p>
+          </div>
+          </div>
+        </section>
+
+        <section class="section section-collapsible is-collapsed" id="reminders">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand Reminders section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Reminders</h2>
+          </div>
+          <div class="section-content" hidden>
+          <div class="section-body">
+            <form id="reminder-form" class="reminder-form">
+              <input type="text" id="reminder-title" class="reminder-input" placeholder="Reminder task name" required>
+              <input type="datetime-local" id="reminder-datetime" class="reminder-input" required>
+              <select id="reminder-assignee" class="reminder-input">
+                <option value="">Assign to team member</option>
+              </select>
+              <button type="submit" class="reminder-button">Add Reminder</button>
+            </form>
+            <div class="create-panel edit-panel" id="reminder-edit-panel" hidden>
+              <form id="reminder-edit-form" class="inline-create-form">
+                <input type="hidden" id="reminder-edit-id">
+                <input type="text" id="reminder-edit-title" class="inline-input" placeholder="Reminder task name" required>
+                <input type="datetime-local" id="reminder-edit-datetime" class="inline-input" required>
+                <select id="reminder-edit-assignee" class="inline-input">
+                  <option value="">Assign to team member</option>
+                </select>
+                <select id="reminder-edit-status" class="inline-input">
+                  <option value="pending">Pending</option>
+                  <option value="sent">Sent</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+                <button type="submit" class="inline-submit">Save</button>
+                <button type="button" class="inline-cancel" data-panel="reminder-edit-panel">Cancel</button>
+              </form>
+            </div>
+            <div id="reminders-list">
+              <p class="empty">Loading reminders...</p>
+            </div>
+          </div>
+          </div>
+        </section>
+
+        <section class="section section-collapsible is-collapsed" id="archive">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand Archive section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Archive</h2>
+          </div>
+          <div class="section-content" hidden>
+            <p class="section-description">Archived task groups and their tasks are kept here for reference.</p>
+            <div class="section-body" id="archive-list">
+              <p class="empty">Loading archived groups...</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="section section-collapsible is-collapsed" id="mcp-console">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Expand MCP Console section" aria-expanded="false">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">MCP Console</h2>
+          </div>
+          <div class="section-content" hidden>
+          <div class="section-body">
+            <form id="mcp-form" class="mcp-form">
+              <input type="text" id="mcp-command" class="mcp-input" placeholder="Type command..." required>
+              <button type="submit" class="mcp-button">Execute</button>
+            </form>
+
+            <div class="mcp-results" id="mcp-results">
+              <div class="mcp-analysis">
+                <h3 class="mcp-analysis-title">Tool Selection</h3>
+
+                <div class="mcp-detail-grid">
+                  <div class="mcp-detail-item mcp-detail-item-wide">
+                    <span class="mcp-detail-label">Input</span>
+                    <span class="mcp-detail-value" id="mcp-input-text">—</span>
+                  </div>
+                  <div class="mcp-detail-item">
+                    <span class="mcp-detail-label">Matched Tool</span>
+                    <span class="mcp-detail-value" id="mcp-matched-tool">—</span>
+                  </div>
+                  <div class="mcp-detail-item">
+                    <span class="mcp-detail-label">Confidence</span>
+                    <span class="mcp-detail-value mcp-confidence-value" id="mcp-confidence">—</span>
+                  </div>
+                </div>
+
+                <div class="mcp-scores">
+                  <div class="mcp-score">
+                    <div class="mcp-score-header">
+                      <span class="mcp-score-label">Keyword</span>
+                      <span class="mcp-score-value" id="mcp-keyword-score">—</span>
+                    </div>
+                    <div class="mcp-score-bar"><span class="mcp-score-fill" id="mcp-keyword-bar"></span></div>
+                  </div>
+                  <div class="mcp-score">
+                    <div class="mcp-score-header">
+                      <span class="mcp-score-label">Pattern</span>
+                      <span class="mcp-score-value" id="mcp-pattern-score">—</span>
+                    </div>
+                    <div class="mcp-score-bar"><span class="mcp-score-fill" id="mcp-pattern-bar"></span></div>
+                  </div>
+                  <div class="mcp-score">
+                    <div class="mcp-score-header">
+                      <span class="mcp-score-label">Token</span>
+                      <span class="mcp-score-value" id="mcp-token-score">—</span>
+                    </div>
+                    <div class="mcp-score-bar"><span class="mcp-score-fill" id="mcp-token-bar"></span></div>
+                  </div>
+                </div>
+
+                <div class="mcp-reason-block">
+                  <span class="mcp-detail-label">Reason</span>
+                  <p class="mcp-reason-text" id="mcp-reason">Run a command to see how Syntra selects a tool.</p>
+                </div>
+              </div>
+
+              <div class="mcp-execution">
+                <span class="mcp-detail-label">Execution Result</span>
+                <pre class="mcp-result-output" id="mcp-result">Waiting for command...</pre>
+              </div>
+            </div>
+          </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <div id="confirm-modal" class="confirm-modal" hidden aria-hidden="true">
+    <div class="confirm-modal-backdrop" data-confirm-dismiss></div>
+    <div
+      id="confirm-modal-dialog"
+      class="confirm-modal-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-labelledby="confirm-modal-title"
+      aria-describedby="confirm-modal-message"
+    >
+      <div class="confirm-modal-icon" id="confirm-modal-icon" aria-hidden="true"></div>
+      <h2 id="confirm-modal-title" class="confirm-modal-title"></h2>
+      <p id="confirm-modal-message" class="confirm-modal-message"></p>
+      <div class="confirm-modal-actions">
+        <button type="button" class="confirm-modal-btn confirm-modal-cancel" id="confirm-modal-cancel">
+          Cancel
+        </button>
+        <button type="button" class="confirm-modal-btn confirm-modal-confirm" id="confirm-modal-confirm">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

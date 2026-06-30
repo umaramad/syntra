@@ -1,0 +1,4 @@
+APP_NAME = "Syntra"
+DATABASE_PATH = "syntra.db"
+DEBUG = True
+TOOL_MATCH_THRESHOLD = 60
