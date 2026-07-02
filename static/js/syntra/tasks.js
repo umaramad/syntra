@@ -594,8 +594,8 @@ function renderArchivedGroupBlock(group) {
         <div class="archived-group-actions">
           <span class="archived-badge">Archived</span>
           ${renderTaskGroupCopyButton(group.id, groupName, "archived")}
-          <button type="button" class="task-group-restore-btn" data-group-id="${group.id}" data-group-name="${Syntra.core.escapeHtml(groupName)}" data-task-count="${taskCount}" aria-label="Restore group" title="Restore group">Restore</button>
-          <button type="button" class="task-group-delete-btn" data-group-id="${group.id}" data-group-name="${Syntra.core.escapeHtml(groupName)}" data-task-count="${taskCount}" aria-label="Delete group" title="Delete group">Delete</button>
+          <button type="button" class="task-group-icon-btn task-group-icon-btn--restore task-group-restore-btn" data-group-id="${group.id}" data-group-name="${Syntra.core.escapeHtml(groupName)}" data-task-count="${taskCount}" aria-label="Restore group" title="Restore group">${Syntra.constants.RESTORE_ICON}</button>
+          <button type="button" class="task-group-icon-btn task-group-icon-btn--delete task-group-delete-btn" data-group-id="${group.id}" data-group-name="${Syntra.core.escapeHtml(groupName)}" data-task-count="${taskCount}" aria-label="Delete group" title="Delete group">${Syntra.constants.DELETE_ICON}</button>
         </div>
       </div>
       <div class="task-group-body"${isCollapsed ? " hidden" : ""}>
@@ -783,13 +783,13 @@ function renderTaskRow(task) {
       <td>${Syntra.core.escapeHtml(task.priority || "—")}</td>
       <td>${Syntra.core.escapeHtml(task.assignee_name || "—")}</td>
       <td>${Syntra.search.renderDueDateCell(task)}</td>
-      <td class="actions-cell">
+      ${Syntra.ui.renderActionsCell(`
         <button type="button" class="task-comments-btn" data-id="${task.id}" aria-label="View standup updates" title="Standup updates">
           <span class="task-comments-icon" aria-hidden="true">💬</span>
           <span class="task-comments-count" id="task-comment-count-${task.id}">${commentCount}</span>
         </button>
         ${Syntra.ui.renderDeleteButton(task.id, "task")}
-      </td>
+      `)}
     </tr>
     <tr class="task-comments-row" id="task-comments-${task.id}"${commentsOpen ? "" : " hidden"}>
       <td colspan="7">
@@ -1483,7 +1483,7 @@ function renderNotesFromCache() {
             <td>${Syntra.core.escapeHtml(note.title)}</td>
             <td>${Syntra.core.escapeHtml(Syntra.core.truncate(note.content, 80))}</td>
             <td>${Syntra.core.escapeHtml(formatDateTime(note.updated_at || note.created_at))}</td>
-            <td class="actions-cell">${Syntra.ui.renderDeleteButton(note.id, "note")}</td>
+            ${Syntra.ui.renderActionsCell(Syntra.ui.renderDeleteButton(note.id, "note"))}
           </tr>
         `).join("")}
       </tbody>
@@ -1530,7 +1530,7 @@ function renderTeamFromCache() {
             <td>${Syntra.core.escapeHtml(member.role || "—")}</td>
             <td>${Syntra.core.escapeHtml(member.email || "—")}</td>
             <td>${Syntra.core.escapeHtml(member.status || "—")}</td>
-            <td class="actions-cell">${Syntra.ui.renderDeleteButton(member.id, "team member")}</td>
+            ${Syntra.ui.renderActionsCell(Syntra.ui.renderDeleteButton(member.id, "team member"))}
           </tr>
         `).join("")}
       </tbody>
@@ -1567,7 +1567,7 @@ async function loadReminders() {
             <td>${Syntra.core.escapeHtml(formatDateTime(reminder.remind_at))}</td>
             <td>${Syntra.core.escapeHtml(reminder.assignee_name || "—")}</td>
             <td><span class="status status-${reminder.status}">${reminder.status}</span></td>
-            <td class="actions-cell">${Syntra.ui.renderDeleteButton(reminder.id, "reminder")}</td>
+            ${Syntra.ui.renderActionsCell(Syntra.ui.renderDeleteButton(reminder.id, "reminder"))}
           </tr>
         `).join("")}
       </tbody>

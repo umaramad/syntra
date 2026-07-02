@@ -83,6 +83,7 @@ body {
 .app {
   display: flex;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -354,8 +355,10 @@ body {
 
 .content {
   padding: 1.75rem 2rem 2.5rem;
+  overflow-x: hidden;
   overflow-y: auto;
   flex: 1;
+  min-width: 0;
 }
 
 /* Dashboard stat cards */
@@ -532,6 +535,8 @@ body {
   margin-bottom: 1.25rem;
   overflow: hidden;
   box-shadow: var(--shadow);
+  min-width: 0;
+  max-width: 100%;
 }
 
 .section-title {
@@ -558,6 +563,7 @@ body {
   padding: 1.125rem 1.5rem;
   border-bottom: 1px solid var(--border-light);
   background: var(--surface);
+  min-width: 0;
 }
 
 .section-collapsible.is-collapsed .section-header {
@@ -710,6 +716,9 @@ body {
 
 .section-body {
   padding: 1.25rem 1.5rem;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
 }
 
 .empty {
@@ -910,9 +919,18 @@ body {
 }
 
 .actions-cell {
-  width: 88px;
+  width: 1%;
+  min-width: 88px;
   text-align: right;
   white-space: nowrap;
+}
+
+.actions-cell-inner {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  max-width: 100%;
 }
 
 .done-col {
@@ -1209,28 +1227,34 @@ body {
   align-items: stretch;
   gap: 0.5rem;
   background: var(--bg);
+  min-width: 0;
 }
 
 .task-group-header-row .task-group-header {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   background: transparent;
 }
 
 .task-group-actions,
 .archived-group-actions {
   align-self: center;
-  margin-right: 0.75rem;
-  flex-shrink: 0;
+  margin-right: 0.5rem;
+  flex: 0 0 auto;
+  max-width: min(100%, 220px);
 }
 
 .task-group-actions,
 .archived-group-actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.375rem;
 }
 
-.task-group-copy-btn {
+.task-group-copy-btn,
+.task-group-icon-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1243,28 +1267,48 @@ body {
   color: var(--text-muted);
   cursor: pointer;
   transition: background var(--transition), color var(--transition), border-color var(--transition);
+  flex-shrink: 0;
 }
 
-.task-group-copy-btn:hover {
+.task-group-copy-btn:hover,
+.task-group-icon-btn:hover {
   background: #eff6ff;
   border-color: #93c5fd;
   color: #1d4ed8;
 }
 
-.task-group-copy-btn:disabled {
+.task-group-copy-btn:disabled,
+.task-group-icon-btn:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 
-.task-group-copy-btn svg {
+.task-group-copy-btn svg,
+.task-group-icon-btn svg {
   width: 16px;
   height: 16px;
   fill: currentColor;
 }
 
-.task-group-archive-btn,
-.task-group-restore-btn,
-.task-group-delete-btn {
+.task-group-icon-btn--restore:hover {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #14532d;
+}
+
+.task-group-icon-btn--delete {
+  color: #b42318;
+  border-color: #fecdca;
+  background: #fef3f2;
+}
+
+.task-group-icon-btn--delete:hover {
+  background: #fee4e2;
+  border-color: #fda29b;
+  color: #912018;
+}
+
+.task-group-archive-btn {
   padding: 0.35rem 0.75rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1274,9 +1318,6 @@ body {
   font-family: inherit;
   cursor: pointer;
   transition: background var(--transition), color var(--transition), border-color var(--transition);
-}
-
-.task-group-archive-btn {
   color: var(--text-muted);
 }
 
@@ -1284,30 +1325,6 @@ body {
   background: #fff4e5;
   border-color: #f0c987;
   color: #9a6700;
-}
-
-.task-group-restore-btn {
-  color: #166534;
-  border-color: #bbf7d0;
-  background: #f0fdf4;
-}
-
-.task-group-restore-btn:hover {
-  background: #dcfce7;
-  border-color: #86efac;
-  color: #14532d;
-}
-
-.task-group-delete-btn {
-  color: #b42318;
-  border-color: #fecdca;
-  background: #fef3f2;
-}
-
-.task-group-delete-btn:hover {
-  background: #fee4e2;
-  border-color: #fda29b;
-  color: #912018;
 }
 
 .archived-badge {
@@ -1329,7 +1346,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  width: 100%;
+  min-width: 0;
   padding: 0.75rem 1rem;
   background: var(--bg);
   border: none;
@@ -1360,13 +1377,18 @@ body {
 }
 
 .task-group-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.9375rem;
   font-weight: 600;
   color: var(--text);
 }
 
 .task-group-count {
-  margin-left: auto;
+  flex-shrink: 0;
   font-size: 0.75rem;
   font-weight: 600;
   background: var(--primary-light);
@@ -2506,7 +2528,6 @@ body.modal-open {
 
   .section-body {
     padding: 1rem 1.125rem;
-    overflow-x: auto;
   }
 
   table {

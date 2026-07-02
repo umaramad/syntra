@@ -81,6 +81,7 @@
     CONFIRM_ICONS: {},
     DELETE_ICON: "",
     COPY_ICON: "",
+    RESTORE_ICON: "",
   };
 
   global.Syntra.state = {

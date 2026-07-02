@@ -158,6 +158,10 @@ function renderDeleteButton(id, label) {
     </button>`;
 }
 
+function renderActionsCell(innerHtml) {
+  return `<td class="actions-cell"><div class="actions-cell-inner">${innerHtml}</div></td>`;
+}
+
 function highlightRow(id) {
   document.querySelectorAll(".editable-row.row-active").forEach((row) => {
     row.classList.remove("row-active");
@@ -240,8 +244,14 @@ const DELETE_ICON = `
     <path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"/>
   </svg>`;
 
+const RESTORE_ICON = `
+  <svg viewBox="0 0 24 24" aria-hidden="true">
+    <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.902 7.902 0 0 0 20 13c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 9.74A7.902 7.902 0 0 0 4 13c0 4.42 3.58 8 8 8v4l5-5-5-5v4z"/>
+  </svg>`;
+
   Syntra.constants.COPY_ICON = COPY_ICON;
   Syntra.constants.DELETE_ICON = DELETE_ICON;
-  Syntra.ui = { setSidebarCollapsed, initSidebarToggle, updateDashboardStats, setSectionCollapsed, expandSection, initSectionCollapse, toggleCreatePanel, closeCreatePanel, renderDeleteButton, highlightRow, highlightStandupRow, openEditPanel, deleteResource, bindEditableList };
+  Syntra.constants.RESTORE_ICON = RESTORE_ICON;
+  Syntra.ui = { setSidebarCollapsed, initSidebarToggle, updateDashboardStats, setSectionCollapsed, expandSection, initSectionCollapse, toggleCreatePanel, closeCreatePanel, renderDeleteButton, renderActionsCell, highlightRow, highlightStandupRow, openEditPanel, deleteResource, bindEditableList };
 
 })(window);
