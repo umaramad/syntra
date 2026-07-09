@@ -87,32 +87,6 @@ body.gc-app-body {
   background: #fff;
 }
 
-.gc-auth-type {
-  border: 1px solid var(--gc-border);
-  border-radius: 8px;
-  padding: 0.75rem 0.9rem;
-  margin: 0;
-}
-
-.gc-auth-type legend {
-  font-size: 0.875rem;
-  font-weight: 600;
-  padding: 0 0.25rem;
-}
-
-.gc-auth-type-option {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  margin-top: 0.35rem;
-}
-
-.gc-auth-type-option input {
-  width: auto;
-}
-
 .gc-form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr auto;

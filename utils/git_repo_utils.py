@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from typing import Optional
 from urllib.parse import urlparse
 
-SUPPORTED_PROVIDERS = ("github", "bitbucket", "gitlab")
+from git_providers_config import GIT_PROVIDERS, detect_provider_from_host
+
+SUPPORTED_PROVIDERS = tuple(GIT_PROVIDERS.keys())
 
 
 @dataclass(frozen=True)
@@ -29,17 +31,6 @@ class RepoRef:
         }
 
 
-def detect_provider_from_host(host: str) -> Optional[str]:
-    host = host.lower().removeprefix("www.")
-    if host in ("github.com",):
-        return "github"
-    if host in ("bitbucket.org",):
-        return "bitbucket"
-    if host in ("gitlab.com",):
-        return "gitlab"
-    return None
-
-
 def parse_repo(value: str, default_provider: str = "github") -> RepoRef:
     text = (value or "").strip()
     if not text:
@@ -49,7 +40,10 @@ def parse_repo(value: str, default_provider: str = "github") -> RepoRef:
         parsed = urlparse(text)
         provider = detect_provider_from_host(parsed.hostname or "")
         if not provider:
-            raise ValueError("Unsupported Git host. Use GitHub, Bitbucket, or GitLab URLs.")
+            raise ValueError(
+                "Unsupported Git host. Configure web_hosts in git_providers_config.py "
+                "or use owner/repo with the provider selected at login."
+            )
         parts = [part for part in parsed.path.strip("/").split("/") if part]
         if len(parts) < 2:
             raise ValueError("Repository URL must include owner and repo name")
@@ -62,5 +56,5 @@ def parse_repo(value: str, default_provider: str = "github") -> RepoRef:
         return RepoRef(provider=provider, owner=owner, name=name.removesuffix(".git"))
 
     raise ValueError(
-        'Repository must look like "owner/repo" or a full GitHub/Bitbucket/GitLab URL'
+        'Repository must look like "owner/repo" or a full Git hosting URL'
     )

@@ -7,14 +7,17 @@ from typing import Any
 
 from urllib.parse import quote
 
+from git_providers_config import get_api_base
 from services.git_providers.base import BaseGitProvider
 from services.git_providers.http_client import GitApiError, request_json
-
-API_BASE = "https://api.github.com"
 
 
 class GitHubProvider(BaseGitProvider):
     provider_name = "github"
+
+    @property
+    def api_base(self) -> str:
+        return get_api_base(self.provider_name)
 
     def _headers(self) -> dict[str, str]:
         headers = super()._headers()
@@ -27,7 +30,7 @@ class GitHubProvider(BaseGitProvider):
         return headers
 
     def validate_token(self) -> dict[str, Any]:
-        user = request_json(f"{API_BASE}/user", headers=self._headers())
+        user = request_json(f"{self.api_base}/user", headers=self._headers())
         return {
             "provider": self.provider_name,
             "login": user.get("login"),
@@ -35,15 +38,15 @@ class GitHubProvider(BaseGitProvider):
         }
 
     def list_branches(self, owner: str, repo: str) -> list[str]:
-        return self._paginate_names(f"{API_BASE}/repos/{owner}/{repo}/branches", "name")
+        return self._paginate_names(f"{self.api_base}/repos/{owner}/{repo}/branches", "name")
 
     def list_tags(self, owner: str, repo: str) -> list[str]:
-        return self._paginate_names(f"{API_BASE}/repos/{owner}/{repo}/tags", "name")
+        return self._paginate_names(f"{self.api_base}/repos/{owner}/{repo}/tags", "name")
 
     def resolve_ref(self, owner: str, repo: str, ref: str, ref_type: str) -> str:
         if ref_type == "tag":
             data = request_json(
-                f"{API_BASE}/repos/{owner}/{repo}/git/ref/tags/{quote(ref, safe='')}",
+                f"{self.api_base}/repos/{owner}/{repo}/git/ref/tags/{quote(ref, safe='')}",
                 headers=self._headers(),
             )
             obj = data.get("object") or {}
@@ -52,19 +55,19 @@ class GitHubProvider(BaseGitProvider):
                 return tag_obj["object"]["sha"]
             return obj.get("sha", "")
         data = request_json(
-            f"{API_BASE}/repos/{owner}/{repo}/git/ref/heads/{quote(ref, safe='')}",
+            f"{self.api_base}/repos/{owner}/{repo}/git/ref/heads/{quote(ref, safe='')}",
             headers=self._headers(),
         )
         return data["object"]["sha"]
 
     def list_paths(self, owner: str, repo: str, commit_sha: str) -> dict[str, str]:
         commit = request_json(
-            f"{API_BASE}/repos/{owner}/{repo}/git/commits/{commit_sha}",
+            f"{self.api_base}/repos/{owner}/{repo}/git/commits/{commit_sha}",
             headers=self._headers(),
         )
         tree_sha = commit["tree"]["sha"]
         tree = request_json(
-            f"{API_BASE}/repos/{owner}/{repo}/git/trees/{tree_sha}",
+            f"{self.api_base}/repos/{owner}/{repo}/git/trees/{tree_sha}",
             headers=self._headers(),
             params={"recursive": "1"},
         )
@@ -76,7 +79,7 @@ class GitHubProvider(BaseGitProvider):
 
     def get_file_text(self, owner: str, repo: str, path: str, commit_sha: str) -> str:
         data = request_json(
-            f"{API_BASE}/repos/{owner}/{repo}/contents/{path}",
+            f"{self.api_base}/repos/{owner}/{repo}/contents/{path}",
             headers=self._headers(),
             params={"ref": commit_sha},
         )

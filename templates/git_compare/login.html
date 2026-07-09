@@ -22,22 +22,18 @@
       <label>
         <span>Provider</span>
         <select id="provider">
-          <option value="github">GitHub</option>
-          <option value="bitbucket">Bitbucket</option>
-          <option value="gitlab">GitLab</option>
+          {% for provider in providers %}
+          <option value="{{ provider.id }}">{{ provider.label }}</option>
+          {% endfor %}
         </select>
       </label>
-      <fieldset class="gc-auth-type">
-        <legend>Sign in with</legend>
-        <label class="gc-auth-type-option">
-          <input type="radio" name="auth-type" value="pat" checked>
-          Personal access token (PAT)
-        </label>
-        <label class="gc-auth-type-option">
-          <input type="radio" name="auth-type" value="password">
-          Username &amp; password
-        </label>
-      </fieldset>
+      <label>
+        <span>Sign in with</span>
+        <select id="auth-type">
+          <option value="pat">Personal access token (PAT)</option>
+          <option value="password">Username &amp; password</option>
+        </select>
+      </label>
       <label id="pat-field">
         <span>Personal access token</span>
         <input type="password" id="api-token" placeholder="Paste your PAT" autocomplete="off">

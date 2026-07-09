@@ -40,7 +40,12 @@ def register_git_compare_routes(app: Flask) -> None:
     def git_compare_login_page():
         if session.get(GitCompareAuthService.SESSION_USER):
             return redirect("/git-compare/app")
-        return render_template("git_compare/login.html")
+        from git_providers_config import list_provider_options
+
+        return render_template(
+            "git_compare/login.html",
+            providers=list_provider_options(),
+        )
 
     @app.route("/git-compare/app", methods=["GET"])
     @require_auth_page

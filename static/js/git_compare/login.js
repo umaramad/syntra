@@ -9,6 +9,8 @@
   const tokenInput = document.getElementById("api-token");
   const passwordInput = document.getElementById("api-password");
   const authHint = document.getElementById("auth-hint");
+  const authTypeSelect = document.getElementById("auth-type");
+  const providerSelect = document.getElementById("provider");
 
   const hints = {
     pat: {
@@ -24,13 +26,12 @@
   };
 
   function selectedAuthType() {
-    const input = document.querySelector('input[name="auth-type"]:checked');
-    return input ? input.value : "pat";
+    return authTypeSelect.value || "pat";
   }
 
   function updateAuthFields() {
     const authType = selectedAuthType();
-    const provider = document.getElementById("provider").value;
+    const provider = providerSelect.value;
     const usePat = authType === "pat";
 
     patField.hidden = !usePat;
@@ -41,10 +42,8 @@
     authHint.textContent = (hints[authType] && hints[authType][provider]) || hints.pat.github;
   }
 
-  document.querySelectorAll('input[name="auth-type"]').forEach((input) => {
-    input.addEventListener("change", updateAuthFields);
-  });
-  document.getElementById("provider").addEventListener("change", updateAuthFields);
+  authTypeSelect.addEventListener("change", updateAuthFields);
+  providerSelect.addEventListener("change", updateAuthFields);
   updateAuthFields();
 
   form.addEventListener("submit", async (event) => {
@@ -55,7 +54,7 @@
     const authType = selectedAuthType();
     const payload = {
       user_id: document.getElementById("user-id").value.trim(),
-      provider: document.getElementById("provider").value,
+      provider: providerSelect.value,
       auth_type: authType,
       token: authType === "pat" ? tokenInput.value.trim() : "",
       password: authType === "password" ? passwordInput.value : "",

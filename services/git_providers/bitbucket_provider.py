@@ -4,17 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
+from git_providers_config import get_api_base
 from services.git_providers.base import BaseGitProvider
 from services.git_providers.http_client import GitApiError, request_json
-
-API_BASE = "https://api.bitbucket.org/2.0"
 
 
 class BitbucketProvider(BaseGitProvider):
     provider_name = "bitbucket"
 
+    @property
+    def api_base(self) -> str:
+        return get_api_base(self.provider_name)
+
     def validate_token(self) -> dict[str, Any]:
-        user = request_json(f"{API_BASE}/user", headers=self._headers())
+        user = request_json(f"{self.api_base}/user", headers=self._headers())
         return {
             "provider": self.provider_name,
             "login": user.get("username"),
@@ -22,15 +25,15 @@ class BitbucketProvider(BaseGitProvider):
         }
 
     def list_branches(self, owner: str, repo: str) -> list[str]:
-        return self._paginate_ref_names(f"{API_BASE}/repositories/{owner}/{repo}/refs/branches")
+        return self._paginate_ref_names(f"{self.api_base}/repositories/{owner}/{repo}/refs/branches")
 
     def list_tags(self, owner: str, repo: str) -> list[str]:
-        return self._paginate_ref_names(f"{API_BASE}/repositories/{owner}/{repo}/refs/tags")
+        return self._paginate_ref_names(f"{self.api_base}/repositories/{owner}/{repo}/refs/tags")
 
     def resolve_ref(self, owner: str, repo: str, ref: str, ref_type: str) -> str:
         collection = "tags" if ref_type == "tag" else "branches"
         data = request_json(
-            f"{API_BASE}/repositories/{owner}/{repo}/refs/{collection}/{ref}",
+            f"{self.api_base}/repositories/{owner}/{repo}/refs/{collection}/{ref}",
             headers=self._headers(),
         )
         return data["target"]["hash"]
@@ -44,7 +47,7 @@ class BitbucketProvider(BaseGitProvider):
         from urllib.request import Request, urlopen
         import ssl
 
-        url = f"{API_BASE}/repositories/{owner}/{repo}/src/{commit_sha}/{path}"
+        url = f"{self.api_base}/repositories/{owner}/{repo}/src/{commit_sha}/{path}"
         request = Request(url, headers=self._headers())
         context = ssl.create_default_context()
         with urlopen(request, timeout=30, context=context) as response:
@@ -68,7 +71,7 @@ class BitbucketProvider(BaseGitProvider):
         prefix: str,
         paths: dict[str, str],
     ) -> None:
-        url = f"{API_BASE}/repositories/{owner}/{repo}/src/{commit_sha}/{prefix}"
+        url = f"{self.api_base}/repositories/{owner}/{repo}/src/{commit_sha}/{prefix}"
         data = request_json(url, headers=self._headers())
         for item in data.get("values", []):
             item_type = item.get("type")

@@ -5,20 +5,23 @@ from __future__ import annotations
 from typing import Any
 from urllib.parse import quote
 
+from git_providers_config import get_api_base
 from services.git_providers.base import BaseGitProvider
 from services.git_providers.http_client import request_json
-
-API_BASE = "https://gitlab.com/api/v4"
 
 
 class GitLabProvider(BaseGitProvider):
     provider_name = "gitlab"
 
+    @property
+    def api_base(self) -> str:
+        return get_api_base(self.provider_name)
+
     def _project_path(self, owner: str, repo: str) -> str:
         return quote(f"{owner}/{repo}", safe="")
 
     def validate_token(self) -> dict[str, Any]:
-        user = request_json(f"{API_BASE}/user", headers=self._headers())
+        user = request_json(f"{self.api_base}/user", headers=self._headers())
         return {
             "provider": self.provider_name,
             "login": user.get("username"),
@@ -27,17 +30,17 @@ class GitLabProvider(BaseGitProvider):
 
     def list_branches(self, owner: str, repo: str) -> list[str]:
         project = self._project_path(owner, repo)
-        return self._paginate_names(f"{API_BASE}/projects/{project}/repository/branches", "name")
+        return self._paginate_names(f"{self.api_base}/projects/{project}/repository/branches", "name")
 
     def list_tags(self, owner: str, repo: str) -> list[str]:
         project = self._project_path(owner, repo)
-        return self._paginate_names(f"{API_BASE}/projects/{project}/repository/tags", "name")
+        return self._paginate_names(f"{self.api_base}/projects/{project}/repository/tags", "name")
 
     def resolve_ref(self, owner: str, repo: str, ref: str, ref_type: str) -> str:
         project = self._project_path(owner, repo)
         if ref_type == "tag":
             tags = request_json(
-                f"{API_BASE}/projects/{project}/repository/tags",
+                f"{self.api_base}/projects/{project}/repository/tags",
                 headers=self._headers(),
                 params={"search": ref},
             )
@@ -46,7 +49,7 @@ class GitLabProvider(BaseGitProvider):
                     return tag["commit"]["id"]
             raise ValueError(f"Tag not found: {ref}")
         data = request_json(
-            f"{API_BASE}/projects/{project}/repository/branches/{quote(ref, safe='')}",
+            f"{self.api_base}/projects/{project}/repository/branches/{quote(ref, safe='')}",
             headers=self._headers(),
         )
         return data["commit"]["id"]
@@ -57,7 +60,7 @@ class GitLabProvider(BaseGitProvider):
         paths: dict[str, str] = {}
         while True:
             data = request_json(
-                f"{API_BASE}/projects/{project}/repository/tree",
+                f"{self.api_base}/projects/{project}/repository/tree",
                 headers=self._headers(),
                 params={"ref": commit_sha, "recursive": "true", "per_page": 100, "page": page},
             )
@@ -77,7 +80,7 @@ class GitLabProvider(BaseGitProvider):
 
         project = self._project_path(owner, repo)
         encoded_path = quote(path, safe="")
-        url = f"{API_BASE}/projects/{project}/repository/files/{encoded_path}/raw?ref={commit_sha}"
+        url = f"{self.api_base}/projects/{project}/repository/files/{encoded_path}/raw?ref={commit_sha}"
         request = Request(url, headers=self._headers())
         context = ssl.create_default_context()
         with urlopen(request, timeout=30, context=context) as response:
