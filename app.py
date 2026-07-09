@@ -2,6 +2,7 @@ from flask import Flask, render_template
 
 import config
 from controllers.backup_controller import register_backup_routes
+from controllers.git_compare_controller import register_git_compare_routes
 from controllers.mcp_controller import register_mcp_routes
 from controllers.note_controller import register_note_routes
 from controllers.profile_controller import register_profile_routes
@@ -16,6 +17,7 @@ from database.db import init_db, seed_default_tools
 def create_app() -> Flask:
     app = Flask(__name__)
     app.config["DEBUG"] = config.DEBUG
+    app.config["SECRET_KEY"] = config.SECRET_KEY
 
     init_db()
     seed_default_tools()
@@ -29,6 +31,7 @@ def create_app() -> Flask:
     register_backup_routes(app)
     register_reminder_routes(app)
     register_mcp_routes(app)
+    register_git_compare_routes(app)
 
     @app.route("/")
     def index():
