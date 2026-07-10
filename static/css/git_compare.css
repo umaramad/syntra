@@ -77,6 +77,43 @@ body.gc-app-body {
   font-weight: 600;
 }
 
+.gc-auth-field-hidden {
+  display: none !important;
+}
+
+.gc-debug-note {
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+.gc-debug-panel {
+  margin-top: 0.5rem;
+  border: 1px solid var(--gc-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 0.8rem;
+}
+
+.gc-debug-panel summary {
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-weight: 600;
+  color: var(--gc-muted);
+}
+
+.gc-debug-panel pre {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  border-top: 1px solid var(--gc-border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #334155;
+}
+
 .gc-form input,
 .gc-form select,
 .gc-select {

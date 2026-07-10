@@ -12,9 +12,11 @@ from controllers.task_controller import register_task_routes
 from controllers.task_group_controller import register_task_group_routes
 from controllers.team_controller import register_team_routes
 from database.db import init_db, seed_default_tools
+from utils.git_compare_debug import configure_logging
 
 
 def create_app() -> Flask:
+    configure_logging()
     app = Flask(__name__)
     app.config["DEBUG"] = config.DEBUG
     app.config["SECRET_KEY"] = config.SECRET_KEY

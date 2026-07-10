@@ -3,6 +3,8 @@
 
   const form = document.getElementById("login-form");
   const errorEl = document.getElementById("login-error");
+  const debugPanel = document.getElementById("login-debug-panel");
+  const debugLog = document.getElementById("login-debug-log");
   const loginBtn = document.getElementById("login-btn");
   const patField = document.getElementById("pat-field");
   const passwordField = document.getElementById("password-field");
@@ -29,17 +31,45 @@
     return authTypeSelect.value || "pat";
   }
 
+  function setFieldVisible(fieldEl, inputEl, visible) {
+    fieldEl.classList.toggle("gc-auth-field-hidden", !visible);
+    inputEl.required = visible;
+    if (!visible) {
+      inputEl.value = "";
+    }
+  }
+
   function updateAuthFields() {
     const authType = selectedAuthType();
     const provider = providerSelect.value;
     const usePat = authType === "pat";
 
-    patField.hidden = !usePat;
-    passwordField.hidden = usePat;
-    tokenInput.required = usePat;
-    passwordInput.required = !usePat;
+    setFieldVisible(patField, tokenInput, usePat);
+    setFieldVisible(passwordField, passwordInput, !usePat);
 
     authHint.textContent = (hints[authType] && hints[authType][provider]) || hints.pat.github;
+  }
+
+  function showDebugLog(lines) {
+    if (!debugPanel || !debugLog || !Array.isArray(lines) || !lines.length) {
+      if (debugPanel) {
+        debugPanel.hidden = true;
+      }
+      return;
+    }
+    debugLog.textContent = lines.join("\n");
+    debugPanel.hidden = false;
+    debugPanel.open = true;
+  }
+
+  function clearDebugLog() {
+    if (debugPanel) {
+      debugPanel.hidden = true;
+      debugPanel.open = false;
+    }
+    if (debugLog) {
+      debugLog.textContent = "";
+    }
   }
 
   authTypeSelect.addEventListener("change", updateAuthFields);
@@ -49,6 +79,7 @@
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     errorEl.hidden = true;
+    clearDebugLog();
     loginBtn.disabled = true;
 
     const authType = selectedAuthType();
@@ -68,6 +99,7 @@
       });
       const data = await response.json();
       if (!response.ok || !data.success) {
+        showDebugLog(data.debug);
         throw new Error(data.error || "Login failed");
       }
       window.location.href = "/git-compare/app";

@@ -6,10 +6,18 @@ from typing import Any, Optional
 
 from flask import session
 
+from git_providers_config import get_api_base, get_proxy_url
 from repositories.git_compare_user_repository import GitCompareUserRepository
 from services.git_providers import get_provider
 from services.git_providers.credentials import GitAuthCredentials
 from services.git_providers.http_client import GitApiError
+from utils.git_compare_debug import begin_login_trace, end_login_trace, log_debug
+
+
+class GitCompareLoginError(ValueError):
+    def __init__(self, message: str, *, debug_trace: Optional[list[str]] = None):
+        super().__init__(message)
+        self.debug_trace = debug_trace or []
 
 
 class GitCompareAuthService:
@@ -32,35 +40,72 @@ class GitCompareAuthService:
         token: str = "",
         password: str = "",
     ) -> dict[str, Any]:
+        trace = begin_login_trace()
         provider = (provider or "github").strip().lower()
-        credentials = GitAuthCredentials.from_login(
-            user_id=user_id,
-            auth_type=auth_type,
-            token=token,
-            password=password,
-        )
 
-        git_provider = get_provider(provider, credentials)
         try:
-            account = git_provider.validate_token()
-        except GitApiError as exc:
-            label = "PAT" if credentials.auth_type == "pat" else "password"
-            raise ValueError(f"Login failed ({label}): {exc}") from exc
+            log_debug(f"Login started: provider={provider}, auth_type={auth_type}, user_id={user_id.strip()}")
+            log_debug(f"API base: {get_api_base(provider)}")
 
-        self.user_repository.upsert_login(credentials.username, provider)
-        session[self.SESSION_USER] = credentials.username
-        session[self.SESSION_SECRET] = credentials.secret
-        session[self.SESSION_AUTH_TYPE] = credentials.auth_type
-        session[self.SESSION_PROVIDER] = provider
-        session[self.SESSION_ACCOUNT] = account.get("login") or credentials.username
-        session.permanent = True
+            proxy_url = get_proxy_url(provider)
+            if proxy_url:
+                log_debug(f"Proxy enabled for {provider}")
+            else:
+                log_debug(f"Proxy disabled for {provider}")
 
-        return {
-            "user_id": credentials.username,
-            "provider": provider,
-            "auth_type": credentials.auth_type,
-            "account": session[self.SESSION_ACCOUNT],
-        }
+            credentials = GitAuthCredentials.from_login(
+                user_id=user_id,
+                auth_type=auth_type,
+                token=token,
+                password=password,
+            )
+            log_debug("Credentials validated locally (secrets not logged)")
+
+            git_provider = get_provider(provider, credentials)
+            log_debug(f"Calling {provider} API to verify account…")
+
+            try:
+                account = git_provider.validate_token()
+            except GitApiError as exc:
+                label = "PAT" if credentials.auth_type == "pat" else "password"
+                log_debug(f"Git API rejected login: status={exc.status}, message={exc}")
+                raise GitCompareLoginError(
+                    f"Login failed ({label}): {exc}",
+                    debug_trace=list(trace),
+                ) from exc
+
+            account_login = account.get("login") or credentials.username
+            log_debug(f"Git API accepted login for account: {account_login}")
+
+            self.user_repository.upsert_login(credentials.username, provider)
+            session[self.SESSION_USER] = credentials.username
+            session[self.SESSION_SECRET] = credentials.secret
+            session[self.SESSION_AUTH_TYPE] = credentials.auth_type
+            session[self.SESSION_PROVIDER] = provider
+            session[self.SESSION_ACCOUNT] = account_login
+            session.permanent = True
+
+            log_debug("Session created successfully")
+            return {
+                "user_id": credentials.username,
+                "provider": provider,
+                "auth_type": credentials.auth_type,
+                "account": account_login,
+                "debug": list(trace),
+            }
+        except GitCompareLoginError:
+            raise
+        except ValueError as exc:
+            log_debug(f"Login validation error: {exc}")
+            raise GitCompareLoginError(str(exc), debug_trace=list(trace)) from exc
+        except Exception as exc:
+            log_debug(f"Unexpected login error: {type(exc).__name__}: {exc}")
+            raise GitCompareLoginError(
+                f"Login failed: {exc}",
+                debug_trace=list(trace),
+            ) from exc
+        finally:
+            end_login_trace()
 
     def logout(self) -> None:
         for key in (

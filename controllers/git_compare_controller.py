@@ -2,7 +2,7 @@ from functools import wraps
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, session
 
-from services.git_compare_auth_service import GitCompareAuthService
+from services.git_compare_auth_service import GitCompareAuthService, GitCompareLoginError
 from services.git_compare_html_service import comparison_from_history, render_comparison_html
 from services.git_compare_service import GitCompareService
 from services.git_providers.http_client import GitApiError
@@ -41,10 +41,12 @@ def register_git_compare_routes(app: Flask) -> None:
         if session.get(GitCompareAuthService.SESSION_USER):
             return redirect("/git-compare/app")
         from git_providers_config import list_provider_options
+        from utils.git_compare_debug import is_debug_enabled
 
         return render_template(
             "git_compare/login.html",
             providers=list_provider_options(),
+            debug_enabled=is_debug_enabled(),
         )
 
     @app.route("/git-compare/app", methods=["GET"])
@@ -69,6 +71,11 @@ def register_git_compare_routes(app: Flask) -> None:
                 password=data.get("password", ""),
             )
             return jsonify({"success": True, "user": result})
+        except GitCompareLoginError as exc:
+            payload = {"success": False, "error": str(exc)}
+            if exc.debug_trace:
+                payload["debug"] = exc.debug_trace
+            return jsonify(payload), 400
         except ValueError as exc:
             return jsonify({"success": False, "error": str(exc)}), 400
 

@@ -10,6 +10,7 @@ from urllib.parse import urlencode
 from urllib.request import HTTPSHandler, ProxyHandler, Request, build_opener, urlopen
 
 from git_providers_config import get_proxy_map
+from utils.git_compare_debug import get_active_trace, is_debug_enabled, log_debug
 
 DEFAULT_TIMEOUT = 30
 
@@ -30,6 +31,13 @@ def open_request(
     provider: str | None = None,
     timeout: int = DEFAULT_TIMEOUT,
 ):
+    if is_debug_enabled() and get_active_trace() is not None:
+        proxy_map = get_proxy_map(provider)
+        log_debug(
+            f"HTTP {request.method} {request.full_url}"
+            + (f" via proxy ({provider})" if proxy_map else f" direct ({provider or 'unknown'})")
+        )
+
     context = _ssl_context()
     proxy_map = get_proxy_map(provider)
     if proxy_map:
@@ -50,8 +58,12 @@ def request_bytes(
         with open_request(request, provider=provider, timeout=timeout) as response:
             return response.read()
     except HTTPError as exc:
+        if is_debug_enabled() and get_active_trace() is not None:
+            log_debug(f"HTTP error {exc.code} for {url}")
         raise _http_error(exc) from exc
     except Exception as exc:
+        if is_debug_enabled() and get_active_trace() is not None:
+            log_debug(f"HTTP request failed for {url}: {type(exc).__name__}: {exc}")
         raise GitApiError(str(exc)) from exc
 
 
@@ -99,8 +111,12 @@ def request_json(
                 return None
             return json.loads(raw)
     except HTTPError as exc:
+        if is_debug_enabled() and get_active_trace() is not None:
+            log_debug(f"HTTP error {exc.code} for {url}")
         raise _http_error(exc) from exc
     except Exception as exc:
+        if is_debug_enabled() and get_active_trace() is not None:
+            log_debug(f"HTTP request failed for {url}: {type(exc).__name__}: {exc}")
         raise GitApiError(str(exc)) from exc
 
 
