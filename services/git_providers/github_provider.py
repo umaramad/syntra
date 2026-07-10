@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 from git_providers_config import get_api_base
 from services.git_providers.base import BaseGitProvider
-from services.git_providers.http_client import GitApiError, request_json
+from services.git_providers.http_client import GitApiError
 
 
 class GitHubProvider(BaseGitProvider):
@@ -30,7 +30,7 @@ class GitHubProvider(BaseGitProvider):
         return headers
 
     def validate_token(self) -> dict[str, Any]:
-        user = request_json(f"{self.api_base}/user", headers=self._headers())
+        user = self.api_json(f"{self.api_base}/user")
         return {
             "provider": self.provider_name,
             "login": user.get("login"),
@@ -45,30 +45,24 @@ class GitHubProvider(BaseGitProvider):
 
     def resolve_ref(self, owner: str, repo: str, ref: str, ref_type: str) -> str:
         if ref_type == "tag":
-            data = request_json(
+            data = self.api_json(
                 f"{self.api_base}/repos/{owner}/{repo}/git/ref/tags/{quote(ref, safe='')}",
-                headers=self._headers(),
             )
             obj = data.get("object") or {}
             if obj.get("type") == "tag":
-                tag_obj = request_json(obj.get("url"), headers=self._headers())
+                tag_obj = self.api_json(obj.get("url"))
                 return tag_obj["object"]["sha"]
             return obj.get("sha", "")
-        data = request_json(
+        data = self.api_json(
             f"{self.api_base}/repos/{owner}/{repo}/git/ref/heads/{quote(ref, safe='')}",
-            headers=self._headers(),
         )
         return data["object"]["sha"]
 
     def list_paths(self, owner: str, repo: str, commit_sha: str) -> dict[str, str]:
-        commit = request_json(
-            f"{self.api_base}/repos/{owner}/{repo}/git/commits/{commit_sha}",
-            headers=self._headers(),
-        )
+        commit = self.api_json(f"{self.api_base}/repos/{owner}/{repo}/git/commits/{commit_sha}")
         tree_sha = commit["tree"]["sha"]
-        tree = request_json(
+        tree = self.api_json(
             f"{self.api_base}/repos/{owner}/{repo}/git/trees/{tree_sha}",
-            headers=self._headers(),
             params={"recursive": "1"},
         )
         paths: dict[str, str] = {}
@@ -78,9 +72,8 @@ class GitHubProvider(BaseGitProvider):
         return paths
 
     def get_file_text(self, owner: str, repo: str, path: str, commit_sha: str) -> str:
-        data = request_json(
+        data = self.api_json(
             f"{self.api_base}/repos/{owner}/{repo}/contents/{path}",
-            headers=self._headers(),
             params={"ref": commit_sha},
         )
         if isinstance(data, list):
@@ -95,11 +88,7 @@ class GitHubProvider(BaseGitProvider):
         names: list[str] = []
         page = 1
         while True:
-            data = request_json(
-                url,
-                headers=self._headers(),
-                params={"per_page": 100, "page": page},
-            )
+            data = self.api_json(url, params={"per_page": 100, "page": page})
             if not data:
                 break
             names.extend(item[field] for item in data if field in item)

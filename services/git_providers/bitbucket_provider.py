@@ -6,7 +6,6 @@ from typing import Any
 
 from git_providers_config import get_api_base
 from services.git_providers.base import BaseGitProvider
-from services.git_providers.http_client import GitApiError, request_json
 
 
 class BitbucketProvider(BaseGitProvider):
@@ -17,7 +16,7 @@ class BitbucketProvider(BaseGitProvider):
         return get_api_base(self.provider_name)
 
     def validate_token(self) -> dict[str, Any]:
-        user = request_json(f"{self.api_base}/user", headers=self._headers())
+        user = self.api_json(f"{self.api_base}/user")
         return {
             "provider": self.provider_name,
             "login": user.get("username"),
@@ -32,9 +31,8 @@ class BitbucketProvider(BaseGitProvider):
 
     def resolve_ref(self, owner: str, repo: str, ref: str, ref_type: str) -> str:
         collection = "tags" if ref_type == "tag" else "branches"
-        data = request_json(
+        data = self.api_json(
             f"{self.api_base}/repositories/{owner}/{repo}/refs/{collection}/{ref}",
-            headers=self._headers(),
         )
         return data["target"]["hash"]
 
@@ -44,20 +42,14 @@ class BitbucketProvider(BaseGitProvider):
         return paths
 
     def get_file_text(self, owner: str, repo: str, path: str, commit_sha: str) -> str:
-        from urllib.request import Request, urlopen
-        import ssl
-
         url = f"{self.api_base}/repositories/{owner}/{repo}/src/{commit_sha}/{path}"
-        request = Request(url, headers=self._headers())
-        context = ssl.create_default_context()
-        with urlopen(request, timeout=30, context=context) as response:
-            return response.read().decode("utf-8", errors="replace")
+        return self.api_text(url)
 
     def _paginate_ref_names(self, url: str) -> list[str]:
         names: list[str] = []
         next_url: str | None = url
         while next_url:
-            data = request_json(next_url, headers=self._headers())
+            data = self.api_json(next_url)
             for item in data.get("values", []):
                 names.append(item["name"])
             next_url = data.get("next")
@@ -72,7 +64,7 @@ class BitbucketProvider(BaseGitProvider):
         paths: dict[str, str],
     ) -> None:
         url = f"{self.api_base}/repositories/{owner}/{repo}/src/{commit_sha}/{prefix}"
-        data = request_json(url, headers=self._headers())
+        data = self.api_json(url)
         for item in data.get("values", []):
             item_type = item.get("type")
             path = item["path"]
@@ -83,7 +75,7 @@ class BitbucketProvider(BaseGitProvider):
 
         next_url = data.get("next")
         while next_url:
-            data = request_json(next_url, headers=self._headers())
+            data = self.api_json(next_url)
             for item in data.get("values", []):
                 item_type = item.get("type")
                 path = item["path"]

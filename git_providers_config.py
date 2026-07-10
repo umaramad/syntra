@@ -1,25 +1,40 @@
 """
 Git Compare — provider URL configuration.
 
-Edit these values for cloud defaults, GitHub Enterprise, or self-hosted GitLab/Bitbucket.
+Edit these values for cloud defaults, GitHub Enterprise, self-hosted GitLab/Bitbucket,
+and corporate proxy access (common for GitHub behind a firewall).
 
 Fields per provider:
   api_base   — REST API root used by Syntra (no trailing slash)
   web_hosts  — Hostnames recognized when users paste repository URLs
+  proxy      — Optional per-provider proxy (see below)
 
-Examples:
-  GitHub Enterprise:
-    "api_base": "https://github.mycompany.com/api/v3",
-    "web_hosts": ["github.mycompany.com"],
+Proxy (per provider, under the "proxy" key):
+  enabled   — True to route this provider's API calls through a proxy
+  url       — Proxy URL, e.g. "http://proxy.corp.local:8080"
+  username  — Optional proxy username
+  password  — Optional proxy password
 
-  Self-hosted GitLab:
-    "api_base": "https://gitlab.mycompany.com/api/v4",
-    "web_hosts": ["gitlab.mycompany.com"],
+Global proxy defaults (GIT_PROXY_DEFAULTS) apply when a provider has no "proxy" block.
+Set proxy on GitHub only for firewall networks; leave bitbucket/gitlab disabled unless needed.
+
+Environment overrides (optional):
+  SYNTRA_GIT_PROXY_URL, SYNTRA_GIT_PROXY_USERNAME, SYNTRA_GIT_PROXY_PASSWORD
+  SYNTRA_GITHUB_PROXY_URL — overrides GitHub proxy URL when set
 """
 
 from __future__ import annotations
 
+import os
 from typing import Any
+from urllib.parse import quote, urlparse, urlunparse
+
+GIT_PROXY_DEFAULTS: dict[str, Any] = {
+    "enabled": False,
+    "url": "",
+    "username": "",
+    "password": "",
+}
 
 GIT_PROVIDERS: dict[str, dict[str, Any]] = {
     "github": {
@@ -28,6 +43,12 @@ GIT_PROVIDERS: dict[str, dict[str, Any]] = {
         "web_hosts": [
             "github.com",
         ],
+        "proxy": {
+            "enabled": False,
+            "url": "",
+            "username": "",
+            "password": "",
+        },
     },
     "bitbucket": {
         "label": "Bitbucket",
@@ -35,6 +56,12 @@ GIT_PROVIDERS: dict[str, dict[str, Any]] = {
         "web_hosts": [
             "bitbucket.org",
         ],
+        "proxy": {
+            "enabled": False,
+            "url": "",
+            "username": "",
+            "password": "",
+        },
     },
     "gitlab": {
         "label": "GitLab",
@@ -42,6 +69,12 @@ GIT_PROVIDERS: dict[str, dict[str, Any]] = {
         "web_hosts": [
             "gitlab.com",
         ],
+        "proxy": {
+            "enabled": False,
+            "url": "",
+            "username": "",
+            "password": "",
+        },
     },
 }
 
@@ -75,3 +108,70 @@ def list_provider_options() -> list[dict[str, str]]:
         {"id": provider, "label": str(settings.get("label", provider.title()))}
         for provider, settings in GIT_PROVIDERS.items()
     ]
+
+
+def _env_proxy_url(provider: str) -> str:
+    if provider == "github":
+        return (os.environ.get("SYNTRA_GITHUB_PROXY_URL") or "").strip()
+    return (os.environ.get("SYNTRA_GIT_PROXY_URL") or "").strip()
+
+
+def _merge_proxy_settings(provider: str) -> dict[str, Any]:
+    provider_cfg = get_provider_config(provider)
+    merged = {**GIT_PROXY_DEFAULTS, **(provider_cfg.get("proxy") or {})}
+
+    env_url = _env_proxy_url(provider)
+    if env_url:
+        merged["url"] = env_url
+        merged["enabled"] = True
+
+    env_user = (os.environ.get("SYNTRA_GIT_PROXY_USERNAME") or "").strip()
+    env_pass = (os.environ.get("SYNTRA_GIT_PROXY_PASSWORD") or "").strip()
+    if env_user:
+        merged["username"] = env_user
+    if env_pass:
+        merged["password"] = env_pass
+
+    return merged
+
+
+def get_proxy_url(provider: str | None) -> str | None:
+    if not provider:
+        return None
+
+    settings = _merge_proxy_settings(provider)
+    if not settings.get("enabled"):
+        return None
+
+    url = str(settings.get("url") or "").strip()
+    if not url:
+        return None
+
+    username = str(settings.get("username") or "").strip()
+    password = str(settings.get("password") or "")
+    if not username:
+        return url
+
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    if parsed.port:
+        host = f"{host}:{parsed.port}"
+    userinfo = f"{quote(username, safe='')}:{quote(password, safe='')}"
+    netloc = f"{userinfo}@{host}"
+    return urlunparse(
+        (
+            parsed.scheme or "http",
+            netloc,
+            parsed.path or "",
+            parsed.params,
+            parsed.query,
+            parsed.fragment,
+        )
+    )
+
+
+def get_proxy_map(provider: str | None) -> dict[str, str] | None:
+    proxy_url = get_proxy_url(provider)
+    if not proxy_url:
+        return None
+    return {"http": proxy_url, "https": proxy_url}

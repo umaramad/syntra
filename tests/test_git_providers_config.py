@@ -24,7 +24,37 @@ def test_custom_host_after_config_override(monkeypatch):
             "label": "GitLab",
             "api_base": "https://gitlab.mycompany.com/api/v4",
             "web_hosts": ["gitlab.mycompany.com"],
+            "proxy": {"enabled": False, "url": "", "username": "", "password": ""},
         },
     )
     assert get_api_base("gitlab") == "https://gitlab.mycompany.com/api/v4"
     assert detect_provider_from_host("gitlab.mycompany.com") == "gitlab"
+
+
+def test_github_proxy_enabled():
+    import git_providers_config as provider_config
+
+    original = provider_config.GIT_PROVIDERS["github"]["proxy"]
+    try:
+        provider_config.GIT_PROVIDERS["github"]["proxy"] = {
+            "enabled": True,
+            "url": "http://proxy.corp:8080",
+            "username": "gituser",
+            "password": "secret",
+        }
+        proxy_url = provider_config.get_proxy_url("github")
+        assert proxy_url is not None
+        assert proxy_url.startswith("http://gituser:")
+        assert "proxy.corp:8080" in proxy_url
+        proxy_map = provider_config.get_proxy_map("github")
+        assert proxy_map["https"] == proxy_url
+    finally:
+        provider_config.GIT_PROVIDERS["github"]["proxy"] = original
+
+
+def test_proxy_disabled_by_default():
+    import git_providers_config as provider_config
+
+    assert provider_config.get_proxy_url("github") is None
+    assert provider_config.get_proxy_url("bitbucket") is None
+
