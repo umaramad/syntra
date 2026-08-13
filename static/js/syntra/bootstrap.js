@@ -28,13 +28,34 @@
   const THEME_STORAGE_KEY = "syntra-theme";
   const SIDEBAR_STORAGE_KEY = "syntra-sidebar-collapsed";
   const ONBOARDING_STORAGE_KEY = "syntra-onboarding-dismissed";
+  const EXPANDED_GROUPS_STORAGE_KEY = "syntra-expanded-groups";
+  const SECTION_STATE_STORAGE_KEY = "syntra-expanded-sections";
   const STANDUP_STATUSES = ["pending", "in_progress", "done", "cancelled"];
 
+  function readStoredExpandedGroups() {
+    try {
+      const raw = localStorage.getItem(EXPANDED_GROUPS_STORAGE_KEY);
+      const list = JSON.parse(raw || "[]");
+      if (!Array.isArray(list)) return { active: new Set(), archived: new Set() };
+      const active = new Set();
+      const archived = new Set();
+      list.forEach((key) => {
+        const name = String(key);
+        if (name.startsWith("archived:")) archived.add(name);
+        else active.add(name);
+      });
+      return { active, archived };
+    } catch (_err) {
+      return { active: new Set(), archived: new Set() };
+    }
+  }
+
+  const storedExpandedGroups = readStoredExpandedGroups();
   let taskCache = [];
   let taskGroupCache = [];
   let archivedGroupCache = [];
-  const expandedTaskGroups = new Set();
-  const expandedArchivedGroups = new Set();
+  const expandedTaskGroups = storedExpandedGroups.active;
+  const expandedArchivedGroups = storedExpandedGroups.archived;
   const expandedTaskComments = new Set();
   const standupBodyCollapsed = new Set();
   const taskCommentsCache = {};
@@ -77,6 +98,8 @@
     THEME_STORAGE_KEY,
     SIDEBAR_STORAGE_KEY,
     ONBOARDING_STORAGE_KEY,
+    EXPANDED_GROUPS_STORAGE_KEY,
+    SECTION_STATE_STORAGE_KEY,
     STANDUP_STATUSES,
     CONFIRM_ICONS: {},
     DELETE_ICON: "",

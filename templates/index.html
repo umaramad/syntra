@@ -61,10 +61,6 @@
           <span class="nav-icon" aria-hidden="true">⚙</span>
           <span class="nav-label">Settings</span>
         </a>
-        <a class="nav-link" href="/git-compare/" title="Git Compare">
-          <span class="nav-icon" aria-hidden="true">⇄</span>
-          <span class="nav-label">Git Compare</span>
-        </a>
       </nav>
     </aside>
 
@@ -167,33 +163,6 @@
               <input type="date" id="task-due" class="inline-input" title="Due date">
               <button type="submit" class="inline-submit">Create</button>
               <button type="button" class="inline-cancel" data-panel="task-create-panel">Cancel</button>
-            </form>
-          </div>
-          <div class="create-panel edit-panel" id="task-edit-panel" hidden>
-            <form id="task-edit-form" class="inline-create-form">
-              <input type="hidden" id="task-edit-id">
-              <select id="task-edit-group" class="inline-input" required>
-                <option value="">Select group</option>
-              </select>
-              <input type="text" id="task-edit-title" class="inline-input" placeholder="Task title" required>
-              <select id="task-edit-assignee" class="inline-input">
-                <option value="">Assign to team member</option>
-              </select>
-              <select id="task-edit-status" class="inline-input">
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-              <select id="task-edit-priority" class="inline-input">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <input type="date" id="task-edit-due" class="inline-input">
-              <button type="submit" class="inline-submit">Save</button>
-              <button type="button" class="inline-cancel" data-panel="task-edit-panel">Cancel</button>
             </form>
           </div>
           <div class="create-panel edit-panel" id="standup-edit-panel" hidden>

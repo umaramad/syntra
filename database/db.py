@@ -237,38 +237,6 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             "ALTER TABLE user_settings ADD COLUMN reminder_sound_enabled INTEGER NOT NULL DEFAULT 0"
         )
 
-    conn.executescript(
-        """
-        CREATE TABLE IF NOT EXISTS git_compare_users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL UNIQUE,
-            provider TEXT NOT NULL DEFAULT 'github',
-            last_login_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE TABLE IF NOT EXISTS git_compare_history (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id TEXT NOT NULL,
-            provider TEXT NOT NULL,
-            from_repo TEXT NOT NULL,
-            to_repo TEXT NOT NULL,
-            from_ref TEXT NOT NULL,
-            from_ref_type TEXT NOT NULL,
-            to_ref TEXT NOT NULL,
-            to_ref_type TEXT NOT NULL,
-            stats_json TEXT,
-            files_json TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        );
-
-        CREATE INDEX IF NOT EXISTS idx_git_compare_history_user_id
-            ON git_compare_history(user_id);
-        CREATE INDEX IF NOT EXISTS idx_git_compare_history_created_at
-            ON git_compare_history(created_at);
-        """
-    )
-
 
 def init_db() -> None:
     """Create schema, migrate, and seed default MCP tools."""

@@ -86,19 +86,45 @@ function setSectionCollapsed(section, collapsed) {
   }
 }
 
+function readStoredSectionStates() {
+  try {
+    const raw = localStorage.getItem(Syntra.constants.SECTION_STATE_STORAGE_KEY);
+    const parsed = JSON.parse(raw || "{}");
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch (_err) {
+    return {};
+  }
+}
+
+function persistSectionStates() {
+  try {
+    const state = {};
+    document.querySelectorAll(".section-collapsible").forEach((section) => {
+      state[section.id] = !section.classList.contains("is-collapsed");
+    });
+    localStorage.setItem(Syntra.constants.SECTION_STATE_STORAGE_KEY, JSON.stringify(state));
+  } catch (_err) {
+    /* ignore storage errors */
+  }
+}
+
 function expandSection(sectionOrId) {
   const section =
     typeof sectionOrId === "string" ? document.getElementById(sectionOrId) : sectionOrId;
   if (!section || !section.classList.contains("section-collapsible")) return;
   if (section.classList.contains("is-collapsed")) {
     setSectionCollapsed(section, false);
+    persistSectionStates();
   }
 }
 
 function initSectionCollapse() {
+  const stored = readStoredSectionStates();
   document.querySelectorAll(".section-collapsible").forEach((section) => {
     const defaultCollapsed = section.dataset.defaultExpanded !== "true";
-    setSectionCollapsed(section, defaultCollapsed);
+    const collapsed =
+      typeof stored[section.id] === "boolean" ? !stored[section.id] : defaultCollapsed;
+    setSectionCollapsed(section, collapsed);
 
     const btn = section.querySelector(".section-collapse-btn");
     if (!btn || btn.dataset.bound === "true") return;
@@ -108,8 +134,10 @@ function initSectionCollapse() {
       event.stopPropagation();
       const willCollapse = !section.classList.contains("is-collapsed");
       setSectionCollapsed(section, willCollapse);
+      persistSectionStates();
     });
   });
+  persistSectionStates();
 }
 
 function toggleCreatePanel(panelId, toggleBtn) {
@@ -252,6 +280,6 @@ const RESTORE_ICON = `
   Syntra.constants.COPY_ICON = COPY_ICON;
   Syntra.constants.DELETE_ICON = DELETE_ICON;
   Syntra.constants.RESTORE_ICON = RESTORE_ICON;
-  Syntra.ui = { setSidebarCollapsed, initSidebarToggle, updateDashboardStats, setSectionCollapsed, expandSection, initSectionCollapse, toggleCreatePanel, closeCreatePanel, renderDeleteButton, renderActionsCell, highlightRow, highlightStandupRow, openEditPanel, deleteResource, bindEditableList };
+  Syntra.ui = { setSidebarCollapsed, initSidebarToggle, updateDashboardStats, setSectionCollapsed, expandSection, initSectionCollapse, persistSectionStates, toggleCreatePanel, closeCreatePanel, renderDeleteButton, renderActionsCell, highlightRow, highlightStandupRow, openEditPanel, deleteResource, bindEditableList };
 
 })(window);
