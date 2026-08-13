@@ -34,6 +34,9 @@ syntra.db
 *.db-shm
 *.db-wal
 
+# Brainstorm session files
+.superpowers/
+
 # Environment and secrets
 .env
 .env.*
