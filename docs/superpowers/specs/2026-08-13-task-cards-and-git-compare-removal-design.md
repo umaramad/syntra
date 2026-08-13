@@ -86,6 +86,8 @@ The **My Tasks** section keeps its overall structure (filter bar → collapsible
 
 ### 2.2 Approved layout (from brainstorm, "Option A")
 
+**Default state — everything minimized.** On every load, all tasks render in their compact state: group blocks are collapsed (only group headers + counts visible), and each card shows just its header row — title, pills, meta, action buttons — with the standup thread and edit area hidden. Nothing expands until the user acts: 💬 opens standup, ✎ opens edit, the group header expands its cards. (Matches today's behavior, where `expandedTaskGroups` / `expandedTaskComments` start empty on every page load; no persistence change.)
+
 **Group block header** (unchanged behavior):
 - Collapse chevron + group name + task count
 - Group actions: Copy, Archive (active groups); Restore, Delete, Copy (archived groups)
@@ -120,7 +122,7 @@ The **My Tasks** section keeps its overall structure (filter bar → collapsible
 
 ### 2.4 What must keep working (regression checklist)
 
-- Group collapse/expand + persisted state (`expandedTaskGroups`)
+- Group collapse/expand + per-session state (`expandedTaskGroups`, resets to collapsed on each load)
 - Status / priority / assignee filters and "My Work"
 - Global search highlighting + render-on-search
 - Done toggle (POST `/api/tasks/:id/done`)
