@@ -26,6 +26,7 @@ MANIFEST
 venv/
 ENV/
 env/
+.freebuff/
 
 # Local SQLite database
 syntra.db

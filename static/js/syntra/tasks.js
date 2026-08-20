@@ -93,6 +93,65 @@ function updateStandupPanelHeader(taskId, count) {
   if (titleEl) titleEl.textContent = `Standup updates (${count})`;
 }
 
+function buildPlainTextTable(columns, rows, headerText) {
+  const colWidths = columns.map((col, index) =>
+    Math.max(col.length, ...rows.map((row) => String(row[index]).split("\n")[0].length))
+  );
+
+  const formatRow = (cells) =>
+    cells.map((cell, index) => String(cell).padEnd(colWidths[index])).join("  ");
+
+  const divider = colWidths.map((width) => "-".repeat(width)).join("  ");
+  const body = rows
+    .map((row) => {
+      const cellLines = row.map((cell) => String(cell).split("\n"));
+      const firstLine = formatRow(cellLines.map((lines) => lines[0]));
+      const extraLines = [];
+      cellLines.forEach((lines, colIndex) => {
+        if (lines.length < 2) return;
+        const indent = " ".repeat(
+          colWidths.slice(0, colIndex).reduce((sum, width) => sum + width + 2, 0)
+        );
+        lines.slice(1).forEach((line) => extraLines.push(indent + line));
+      });
+      if (!extraLines.length) return firstLine;
+      return [firstLine, ...extraLines].join("\n");
+    })
+    .join("\n");
+
+  return `${headerText}\n${formatRow(columns)}\n${divider}\n${body}`;
+}
+
+function buildHtmlExportTable(columns, rows, headingHtml) {
+  const headerCells = columns
+    .map(
+      (label) =>
+        `<th style="border:1px solid #2f5597;background-color:#4472c4;color:#ffffff;padding:8px 10px;text-align:left;font-size:11pt;">${label}</th>`
+    )
+    .join("");
+
+  const bodyRows = rows
+    .map((row, index) => {
+      const rowBg = index % 2 === 0 ? "#ffffff" : "#f3f6fb";
+      const cellStyle =
+        "border:1px solid #bfbfbf;padding:8px 10px;vertical-align:top;font-size:11pt;color:#111827;";
+      const cells = row.map((cell) => `<td style="${cellStyle}">${cell}</td>`).join("\n        ");
+      return `<tr style="background-color:${rowBg};">\n        ${cells}\n      </tr>`;
+    })
+    .join("");
+
+  const fragment = `
+    <div style="font-family:Calibri,Arial,sans-serif;color:#111827;">
+${headingHtml}
+      <table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:960px;font-family:Calibri,Arial,sans-serif;">
+        <thead><tr>${headerCells}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    </div>`;
+
+  return `<!DOCTYPE html><html><body><!--StartFragment-->${fragment}<!--EndFragment--></body></html>`;
+}
+
 function buildGroupTasksClipboardPlain(groupName, tasks, commentsByTaskId) {
   const exportedAt = nowFormatted();
   const header = `${groupName}\nExported from Syntra on ${exportedAt}\n`;
@@ -105,62 +164,23 @@ function buildGroupTasksClipboardPlain(groupName, tasks, commentsByTaskId) {
     formatCommentsPlain(commentsByTaskId[task.id]),
   ]);
 
-  const colWidths = columns.map((col, index) =>
-    Math.max(col.length, ...rows.map((row) => String(row[index]).split("\n")[0].length))
-  );
-
-  const formatRow = (cells) =>
-    cells.map((cell, index) => String(cell).padEnd(colWidths[index])).join("  ");
-
-  const divider = colWidths.map((width) => "-".repeat(width)).join("  ");
-  const body = rows
-    .map((row) => {
-      const firstLine = formatRow(row.map((cell) => String(cell).split("\n")[0]));
-      const commentLines = String(row[4]).split("\n").slice(1);
-      if (!commentLines.length) return firstLine;
-      const indent = " ".repeat(colWidths.slice(0, 4).reduce((sum, width) => sum + width + 2, 0));
-      return [firstLine, ...commentLines.map((line) => indent + line)].join("\n");
-    })
-    .join("\n");
-
-  return `${header}\n${formatRow(columns)}\n${divider}\n${body}`;
+  return buildPlainTextTable(columns, rows, header);
 }
 
 function buildGroupTasksClipboardHtml(groupName, tasks, commentsByTaskId) {
   const exportedAt = nowFormatted();
-  const headerCells = ["Title", "Status", "Priority", "Assigned To", "Comments"]
-    .map(
-      (label) =>
-        `<th style="border:1px solid #2f5597;background-color:#4472c4;color:#ffffff;padding:8px 10px;text-align:left;font-size:11pt;">${label}</th>`
-    )
-    .join("");
-
-  const bodyRows = tasks
-    .map((task, index) => {
-      const rowBg = index % 2 === 0 ? "#ffffff" : "#f3f6fb";
-      const cellStyle =
-        "border:1px solid #bfbfbf;padding:8px 10px;vertical-align:top;font-size:11pt;color:#111827;";
-      return `<tr style="background-color:${rowBg};">
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(task.title || "—")}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(task.status))}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(task.priority || "—")}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(task.assignee_name || "—")}</td>
-        <td style="${cellStyle}">${formatCommentsHtml(commentsByTaskId[task.id])}</td>
-      </tr>`;
-    })
-    .join("");
-
-  const fragment = `
-    <div style="font-family:Calibri,Arial,sans-serif;color:#111827;">
-      <p style="margin:0 0 4px 0;font-size:14pt;font-weight:700;">${Syntra.core.escapeHtml(groupName)}</p>
-      <p style="margin:0 0 12px 0;font-size:10pt;color:#6b7280;">Exported from Syntra on ${Syntra.core.escapeHtml(exportedAt)}</p>
-      <table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:960px;font-family:Calibri,Arial,sans-serif;">
-        <thead><tr>${headerCells}</tr></thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-    </div>`;
-
-  return `<!DOCTYPE html><html><body><!--StartFragment-->${fragment}<!--EndFragment--></body></html>`;
+  const columns = ["Title", "Status", "Priority", "Assigned To", "Comments"];
+  const rows = tasks.map((task) => [
+    Syntra.core.escapeHtml(task.title || "—"),
+    Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(task.status)),
+    Syntra.core.escapeHtml(task.priority || "—"),
+    Syntra.core.escapeHtml(task.assignee_name || "—"),
+    formatCommentsHtml(commentsByTaskId[task.id]),
+  ]);
+  const headingHtml =
+    `      <p style="margin:0 0 4px 0;font-size:14pt;font-weight:700;">${Syntra.core.escapeHtml(groupName)}</p>\n` +
+    `      <p style="margin:0 0 12px 0;font-size:10pt;color:#6b7280;">Exported from Syntra on ${Syntra.core.escapeHtml(exportedAt)}</p>`;
+  return buildHtmlExportTable(columns, rows, headingHtml);
 }
 
 async function copyHtmlToClipboard(html, plainText) {
@@ -348,64 +368,25 @@ function buildStandupSummaryClipboardPlain(entries) {
     formatDateTime(entry.created_at),
   ]);
 
-  const colWidths = columns.map((col, index) =>
-    Math.max(col.length, ...rows.map((row) => String(row[index]).split("\n")[0].length))
-  );
-
-  const formatRow = (cells) =>
-    cells.map((cell, index) => String(cell).padEnd(colWidths[index])).join("  ");
-
-  const divider = colWidths.map((width) => "-".repeat(width)).join("  ");
-  const body = rows
-    .map((row) => {
-      const firstLine = formatRow(row.map((cell) => String(cell).split("\n")[0]));
-      const commentLines = String(row[4]).split("\n").slice(1);
-      if (!commentLines.length) return firstLine;
-      const indent = " ".repeat(colWidths.slice(0, 4).reduce((sum, width) => sum + width + 2, 0));
-      return [firstLine, ...commentLines.map((line) => indent + line)].join("\n");
-    })
-    .join("\n");
-
-  return `${header}\n${formatRow(columns)}\n${divider}\n${body}`;
+  return buildPlainTextTable(columns, rows, header);
 }
 
 function buildStandupSummaryClipboardHtml(entries) {
   const exportedAt = nowFormatted();
   const todayLabel = new Date().toLocaleDateString(undefined, { dateStyle: "long" });
-  const headerCells = ["Task", "Group", "Member", "Status", "Update", "Time"]
-    .map(
-      (label) =>
-        `<th style="border:1px solid #2f5597;background-color:#4472c4;color:#ffffff;padding:8px 10px;text-align:left;font-size:11pt;">${label}</th>`
-    )
-    .join("");
-
-  const bodyRows = entries
-    .map((entry, index) => {
-      const rowBg = index % 2 === 0 ? "#ffffff" : "#f3f6fb";
-      const cellStyle =
-        "border:1px solid #bfbfbf;padding:8px 10px;vertical-align:top;font-size:11pt;color:#111827;";
-      return `<tr style="background-color:${rowBg};">
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(entry.taskTitle || "—")}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(entry.groupName)}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(entry.assignee_name || "—")}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(entry.status))}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(entry.comment)}</td>
-        <td style="${cellStyle}">${Syntra.core.escapeHtml(formatDateTime(entry.created_at))}</td>
-      </tr>`;
-    })
-    .join("");
-
-  const fragment = `
-    <div style="font-family:Calibri,Arial,sans-serif;color:#111827;">
-      <p style="margin:0 0 4px 0;font-size:14pt;font-weight:700;">Today's Standup — ${Syntra.core.escapeHtml(todayLabel)}</p>
-      <p style="margin:0 0 12px 0;font-size:10pt;color:#6b7280;">Exported from Syntra on ${Syntra.core.escapeHtml(exportedAt)}</p>
-      <table border="1" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;max-width:960px;font-family:Calibri,Arial,sans-serif;">
-        <thead><tr>${headerCells}</tr></thead>
-        <tbody>${bodyRows}</tbody>
-      </table>
-    </div>`;
-
-  return `<!DOCTYPE html><html><body><!--StartFragment-->${fragment}<!--EndFragment--></body></html>`;
+  const columns = ["Task", "Group", "Member", "Status", "Update", "Time"];
+  const rows = entries.map((entry) => [
+    Syntra.core.escapeHtml(entry.taskTitle || "—"),
+    Syntra.core.escapeHtml(entry.groupName),
+    Syntra.core.escapeHtml(entry.assignee_name || "—"),
+    Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(entry.status)),
+    Syntra.core.escapeHtml(entry.comment),
+    Syntra.core.escapeHtml(formatDateTime(entry.created_at)),
+  ]);
+  const headingHtml =
+    `      <p style="margin:0 0 4px 0;font-size:14pt;font-weight:700;">Today's Standup — ${Syntra.core.escapeHtml(todayLabel)}</p>\n` +
+    `      <p style="margin:0 0 12px 0;font-size:10pt;color:#6b7280;">Exported from Syntra on ${Syntra.core.escapeHtml(exportedAt)}</p>`;
+  return buildHtmlExportTable(columns, rows, headingHtml);
 }
 
 async function refreshStandupSummary() {

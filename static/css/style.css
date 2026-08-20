@@ -467,15 +467,6 @@ body {
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
 }
 
-.editable-row.is-done td:nth-child(2) {
-  opacity: 0.65;
-}
-
-.editable-row.is-done .task-title-cell {
-  text-decoration: line-through;
-  color: var(--text-muted);
-}
-
 .task-done-toggle {
   display: inline-flex;
   align-items: center;
@@ -878,17 +869,14 @@ body {
   background: var(--bg-subtle);
 }
 
-.task-row,
 .editable-row {
   cursor: pointer;
 }
 
-.task-row-active,
 .editable-row.row-active {
   background: var(--primary-light) !important;
 }
 
-.task-delete-btn,
 .row-delete-btn {
   display: inline-flex;
   align-items: center;
@@ -904,14 +892,12 @@ body {
   transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 
-.task-delete-btn:hover,
 .row-delete-btn:hover {
   background: var(--danger-bg);
   border-color: #fca5a5;
   color: var(--danger);
 }
 
-.task-delete-btn svg,
 .row-delete-btn svg {
   width: 16px;
   height: 16px;
@@ -931,11 +917,6 @@ body {
   justify-content: flex-end;
   gap: 0.25rem;
   max-width: 100%;
-}
-
-.done-col {
-  width: 40px;
-  text-align: center;
 }
 
 .actions-cell .row-delete-btn,
