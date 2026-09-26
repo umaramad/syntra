@@ -419,6 +419,268 @@ body {
 .stat-card:nth-child(4) .stat-value { color: #dc2626; }
 .stat-card:nth-child(5) .stat-value { color: #2563eb; }
 
+/* ── Focus Now section ─────────────────────────────────────────────────────── */
+
+.focus-now-icon {
+  font-size: 1rem;
+  margin-right: 0.25rem;
+}
+
+.focus-now-count {
+  font-weight: 500;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-left: 0.25rem;
+}
+
+.focus-now-body {
+  padding: 0;
+}
+
+/* Empty state */
+.focus-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 2.25rem 1.5rem;
+  text-align: center;
+}
+
+.focus-empty-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  margin-bottom: 0.25rem;
+}
+
+.focus-empty-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  margin: 0;
+}
+
+.focus-empty-sub {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* Focus list */
+.focus-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* Focus card */
+.focus-card {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  cursor: pointer;
+  border-bottom: 1px solid var(--border-light);
+  transition: background var(--transition);
+  position: relative;
+  outline: none;
+}
+
+.focus-card:last-child {
+  border-bottom: none;
+}
+
+.focus-card:hover,
+.focus-card:focus-visible {
+  background: var(--surface-hover);
+}
+
+.focus-card:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--primary);
+}
+
+/* Left urgency accent bar */
+.focus-card-urgency-bar {
+  width: 4px;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+
+.focus-card--critical .focus-card-urgency-bar { background: #dc2626; }
+.focus-card--overdue  .focus-card-urgency-bar { background: #f97316; }
+.focus-card--today    .focus-card-urgency-bar { background: #d97706; }
+.focus-card--soon     .focus-card-urgency-bar { background: var(--primary); }
+
+/* Card inner */
+.focus-card-inner {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.875rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Top row: urgency badge + group tag */
+.focus-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.focus-urgency-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.focus-urgency-badge--critical {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.focus-urgency-badge--overdue {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.focus-urgency-badge--today {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.focus-urgency-badge--soon {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.focus-card-group {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Task title */
+.focus-card-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.4;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* Meta row */
+.focus-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  margin-top: 0.125rem;
+}
+
+.focus-card-assignee {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.focus-card-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-size: 0.5rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.focus-card-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.focus-card-due svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+.focus-card--critical .focus-card-due,
+.focus-card--overdue  .focus-card-due { color: #dc2626; }
+.focus-card--today    .focus-card-due { color: #d97706; }
+
+.focus-card-comments {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.focus-card-comments svg {
+  width: 11px;
+  height: 11px;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+
+/* Right arrow */
+.focus-card-arrow {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem 0 0;
+  color: var(--border);
+  flex-shrink: 0;
+  transition: color var(--transition), transform var(--transition);
+}
+
+.focus-card-arrow svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.focus-card:hover .focus-card-arrow,
+.focus-card:focus-visible .focus-card-arrow {
+  color: var(--primary);
+  transform: translateX(2px);
+}
+
+/* Dark mode */
+[data-theme="dark"] .focus-urgency-badge--critical { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .focus-urgency-badge--overdue  { background: #431407; color: #fdba74; }
+[data-theme="dark"] .focus-urgency-badge--today    { background: #422006; color: #fcd34d; }
+[data-theme="dark"] .focus-urgency-badge--soon     { background: #2a2240; color: #b08cff; }
+[data-theme="dark"] .focus-card-group              { background: var(--bg-subtle); }
+
+/* ── End Focus Now ─────────────────────────────────────────────────────────── */
+
 .task-filters {
   display: flex;
   flex-wrap: wrap;

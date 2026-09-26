@@ -389,8 +389,142 @@ function buildStandupSummaryClipboardHtml(entries) {
   return buildHtmlExportTable(columns, rows, headingHtml);
 }
 
+// ─── Focus Now ───────────────────────────────────────────────────────────────
+
+const PRIORITY_SCORE = { urgent: 4, high: 3, medium: 2, low: 1 };
+const FOCUS_MAX_ITEMS = 5;
+
+function scoreFocusTask(task) {
+  const p = PRIORITY_SCORE[task.priority] || 2;
+  const overdue = isOverdue(task.due_date);
+  const today   = isToday(task.due_date);
+  const tomorrow = (() => {
+    if (!task.due_date) return false;
+    const t = new Date(); t.setDate(t.getDate() + 1);
+    const y = t.getFullYear(), m = String(t.getMonth()+1).padStart(2,"0"), d = String(t.getDate()).padStart(2,"0");
+    return String(task.due_date).slice(0,10) === `${y}-${m}-${d}`;
+  })();
+
+  if (overdue && p >= 3) return 100 + p;   // overdue + high/urgent — CRITICAL
+  if (overdue && p === 2) return  90 + p;   // overdue + medium
+  if (today   && p >= 3) return  80 + p;   // due today + high/urgent
+  if (today   && p === 2) return  70 + p;   // due today + medium
+  if (today)              return  60 + p;   // due today + low
+  if (tomorrow && p >= 3) return  50 + p;  // due tomorrow + high/urgent
+  if (overdue)            return  40 + p;  // overdue + low
+  if (tomorrow)           return  30 + p;  // due tomorrow + medium/low
+  // no date but high priority
+  if (p === 4)            return  20;
+  if (p === 3)            return  15;
+  return 0; // not focus-worthy
+}
+
+function getFocusTasks() {
+  return Syntra.state.taskCache
+    .filter((t) => t.status !== "done" && t.status !== "cancelled")
+    .map((t) => ({ task: t, score: scoreFocusTask(t) }))
+    .filter((e) => e.score > 0)
+    .sort((a, b) => b.score - a.score || (PRIORITY_SCORE[b.task.priority] || 2) - (PRIORITY_SCORE[a.task.priority] || 2))
+    .slice(0, FOCUS_MAX_ITEMS)
+    .map((e) => e.task);
+}
+
+function getFocusUrgencyLabel(task) {
+  const overdue = isOverdue(task.due_date);
+  const today   = isToday(task.due_date);
+  const p = task.priority;
+  if (overdue && (p === "urgent" || p === "high")) return { label: "Overdue · High Priority", level: "critical" };
+  if (overdue) return { label: "Overdue", level: "overdue" };
+  if (today  && (p === "urgent" || p === "high")) return { label: "Due Today · High Priority", level: "critical" };
+  if (today) return { label: "Due Today", level: "today" };
+  // tomorrow
+  return { label: "Due Tomorrow", level: "soon" };
+}
+
+function renderFocusNow() {
+  const container = document.getElementById("focus-now-list");
+  const countEl   = document.getElementById("focus-now-count");
+  if (!container) return;
+
+  const tasks = getFocusTasks();
+
+  if (countEl) countEl.textContent = tasks.length ? `(${tasks.length})` : "";
+
+  if (!Syntra.state.taskCache.length) {
+    container.innerHTML = `<p class="empty">No tasks yet — add some in My Tasks.</p>`;
+    return;
+  }
+
+  if (!tasks.length) {
+    container.innerHTML = `
+      <div class="focus-empty">
+        <span class="focus-empty-icon" aria-hidden="true">✅</span>
+        <p class="focus-empty-title">You're all clear!</p>
+        <p class="focus-empty-sub">No overdue or high-priority tasks due today.</p>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="focus-list">
+      ${tasks.map((task) => {
+        const urgency    = getFocusUrgencyLabel(task);
+        const priority   = task.priority || "medium";
+        const assignee   = task.assignee_name || "";
+        const dueDisplay = task.due_date ? formatDateInput(task.due_date) : "";
+        const commentCnt = task.comment_count || 0;
+        const avatarHtml = assignee
+          ? `<span class="focus-card-avatar" aria-hidden="true">${Syntra.core.escapeHtml(getTaskInitials(assignee))}</span>`
+          : "";
+
+        return `
+        <div class="focus-card focus-card--${urgency.level}"
+             data-task-id="${task.id}"
+             role="button"
+             tabindex="0"
+             aria-label="Open task: ${Syntra.core.escapeHtml(task.title)}"
+             title="Click to open in My Tasks">
+          <div class="focus-card-urgency-bar" aria-hidden="true"></div>
+          <div class="focus-card-inner">
+            <div class="focus-card-top">
+              <span class="focus-urgency-badge focus-urgency-badge--${urgency.level}">${urgency.label}</span>
+              <span class="focus-card-group">${Syntra.core.escapeHtml(task.group_name || "—")}</span>
+            </div>
+            <p class="focus-card-title">${Syntra.core.escapeHtml(task.title)}</p>
+            <div class="focus-card-meta">
+              <span class="task-chip task-chip--priority task-chip--${priority}">${priority}</span>
+              <span class="task-chip task-chip--status task-chip--${task.status}">${Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(task.status))}</span>
+              ${assignee ? `<span class="focus-card-assignee">${avatarHtml}<span>${Syntra.core.escapeHtml(assignee)}</span></span>` : ""}
+              ${dueDisplay ? `<span class="focus-card-due">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+                ${Syntra.core.escapeHtml(dueDisplay)}
+              </span>` : ""}
+              ${commentCnt > 0 ? `<span class="focus-card-comments">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+                ${commentCnt}
+              </span>` : ""}
+            </div>
+          </div>
+          <div class="focus-card-arrow" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+          </div>
+        </div>`;
+      }).join("")}
+    </div>`;
+
+  // bind click & keyboard to navigate to the task
+  container.querySelectorAll(".focus-card[data-task-id]").forEach((card) => {
+    const handler = () => openTaskFromSummary(parseInt(card.dataset.taskId, 10));
+    card.addEventListener("click", handler);
+    card.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handler(); }
+    });
+  });
+}
+
+// ─── End Focus Now ────────────────────────────────────────────────────────────
+
 async function refreshStandupSummary() {
-  await prefetchTaskCommentsForSummary();
   const entries = collectTodayStandupUpdates();
   renderStandupSummary(entries);
   return entries;
@@ -1817,6 +1951,7 @@ async function loadDashboard() {
   ]);
   Syntra.ui.updateDashboardStats(tasks, members);
   await refreshStandupSummary();
+  renderFocusNow();
   Syntra.search.updateMyWorkFilterButton();
   return { tasks, members };
 }
@@ -1880,6 +2015,6 @@ async function addReminder(payload) {
   return reminder;
 }
 
-  Syntra.tasks = { renderTaskGroupCopyButton, ensureTaskComments, formatCommentsPlain, formatCommentsHtml, renderStandupStatusOptions, renderStandupMemberOptions, getDefaultStandupMemberId, updateStandupPanelHeader, buildGroupTasksClipboardPlain, buildGroupTasksClipboardHtml, copyHtmlToClipboard, isStandupUpdateToday, prefetchTaskCommentsForSummary, collectTodayStandupUpdates, renderStandupSummary, buildStandupSummaryClipboardPlain, buildStandupSummaryClipboardHtml, refreshStandupSummary, copyAllStandupsToday, initStandupSummary, openTaskFromSummary, copyTaskGroup, handleTaskGroupCopyClick, updateAssigneeOptions, updateGroupOptions, syncTaskGroupNewField, loadTaskGroups, resolveCreateGroupPayload, groupTasksByGroup, renderTaskGroupBlock, renderArchivedTaskRow, renderArchivedGroupBlock, toggleTaskGroup, archiveTaskGroup, restoreArchivedGroup, deleteArchivedGroup, bindTaskGroupEvents, bindArchiveGroupEvents, renderTaskCard, renderPriorityOptions, getTaskInitials, loadTaskComments, renderTaskCommentsList, toggleStandupBody, updateTaskCommentCount, toggleTaskComments, addTaskComment, deleteTaskComment, updateStandupComment, closeTaskCardEdits, openTaskCardEdit, openStandupEdit, openNoteEdit, openTeamEdit, openReminderEdit, markTaskDone, updateTask, deleteTask, updateNote, deleteNote, updateTeamMember, deleteTeamMember, updateReminder, deleteReminder, bindTaskListEvents, bindNoteListEvents, bindTeamListEvents, bindReminderListEvents, initCreatePanels, loadTasks, renderTasksFromCache, loadNotes, renderNotesFromCache, loadTeam, renderTeamFromCache, loadReminders, loadArchivedGroups, loadDashboard, addTask, addNote, addTeamMember, addReminder };
+  Syntra.tasks = { renderTaskGroupCopyButton, ensureTaskComments, formatCommentsPlain, formatCommentsHtml, renderStandupStatusOptions, renderStandupMemberOptions, getDefaultStandupMemberId, updateStandupPanelHeader, buildGroupTasksClipboardPlain, buildGroupTasksClipboardHtml, copyHtmlToClipboard, isStandupUpdateToday, prefetchTaskCommentsForSummary, collectTodayStandupUpdates, renderStandupSummary, buildStandupSummaryClipboardPlain, buildStandupSummaryClipboardHtml, refreshStandupSummary, copyAllStandupsToday, initStandupSummary, openTaskFromSummary, copyTaskGroup, handleTaskGroupCopyClick, updateAssigneeOptions, updateGroupOptions, syncTaskGroupNewField, loadTaskGroups, resolveCreateGroupPayload, groupTasksByGroup, renderTaskGroupBlock, renderArchivedTaskRow, renderArchivedGroupBlock, toggleTaskGroup, archiveTaskGroup, restoreArchivedGroup, deleteArchivedGroup, bindTaskGroupEvents, bindArchiveGroupEvents, renderTaskCard, renderPriorityOptions, getTaskInitials, loadTaskComments, renderTaskCommentsList, toggleStandupBody, updateTaskCommentCount, toggleTaskComments, addTaskComment, deleteTaskComment, updateStandupComment, closeTaskCardEdits, openTaskCardEdit, openStandupEdit, openNoteEdit, openTeamEdit, openReminderEdit, markTaskDone, updateTask, deleteTask, updateNote, deleteNote, updateTeamMember, deleteTeamMember, updateReminder, deleteReminder, bindTaskListEvents, bindNoteListEvents, bindTeamListEvents, bindReminderListEvents, initCreatePanels, loadTasks, renderTasksFromCache, loadNotes, renderNotesFromCache, loadTeam, renderTeamFromCache, loadReminders, loadArchivedGroups, loadDashboard, addTask, addNote, addTeamMember, addReminder, getFocusTasks, renderFocusNow };
 
 })(window);
