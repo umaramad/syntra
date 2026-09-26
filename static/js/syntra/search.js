@@ -106,8 +106,7 @@ function scrollToFirstSearchMatch() {
   const firstMatch = sections.find((section) => section.hasMatch);
   if (!firstMatch) return;
 
-  Syntra.ui.expandSection(firstMatch.id);
-  document.getElementById(firstMatch.id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  Syntra.ui.showView(firstMatch.id);
 }
 
 function applyGlobalSearch() {
@@ -183,7 +182,7 @@ function applyMyWorkFilter() {
   if (assigneeSelect) assigneeSelect.value = Syntra.state.taskFilters.assignee;
 
   updateMyWorkFilterButton();
-  Syntra.ui.expandSection("my-tasks");
+  Syntra.ui.showView("my-tasks");
   Syntra.tasks.renderTasksFromCache();
 }
 

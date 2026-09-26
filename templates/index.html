@@ -29,35 +29,35 @@
         </button>
       </div>
       <nav class="sidebar-nav">
-        <a class="nav-link active" href="#dashboard" title="Dashboard">
+        <a class="nav-link active" href="#dashboard" data-view="dashboard" title="Dashboard">
           <span class="nav-icon" aria-hidden="true">📊</span>
           <span class="nav-label">Dashboard</span>
         </a>
-        <a class="nav-link" href="#my-tasks" title="Tasks">
+        <a class="nav-link" href="#my-tasks" data-view="my-tasks" title="Tasks">
           <span class="nav-icon" aria-hidden="true">✓</span>
           <span class="nav-label">Tasks</span>
         </a>
-        <a class="nav-link" href="#quick-notes" title="Notes">
+        <a class="nav-link" href="#quick-notes" data-view="quick-notes" title="Notes">
           <span class="nav-icon" aria-hidden="true">📝</span>
           <span class="nav-label">Notes</span>
         </a>
-        <a class="nav-link" href="#team-activity" title="Team">
+        <a class="nav-link" href="#team-activity" data-view="team-activity" title="Team">
           <span class="nav-icon" aria-hidden="true">👥</span>
           <span class="nav-label">Team</span>
         </a>
-        <a class="nav-link" href="#reminders" title="Reminders">
+        <a class="nav-link" href="#reminders" data-view="reminders" title="Reminders">
           <span class="nav-icon" aria-hidden="true">🔔</span>
           <span class="nav-label">Reminders</span>
         </a>
-        <a class="nav-link" href="#archive" title="Archive">
+        <a class="nav-link" href="#archive" data-view="archive" title="Archive">
           <span class="nav-icon" aria-hidden="true">📦</span>
           <span class="nav-label">Archive</span>
         </a>
-        <a class="nav-link" href="#mcp-console" title="MCP Console">
+        <a class="nav-link" href="#mcp-console" data-view="mcp-console" title="MCP Console">
           <span class="nav-icon" aria-hidden="true">⌘</span>
           <span class="nav-label">MCP Console</span>
         </a>
-        <a class="nav-link" href="#settings" title="Settings">
+        <a class="nav-link" href="#settings" data-view="settings" title="Settings">
           <span class="nav-icon" aria-hidden="true">⚙</span>
           <span class="nav-label">Settings</span>
         </a>
@@ -80,68 +80,71 @@
       </header>
 
       <div class="content" id="dashboard">
-        <div class="onboarding-banner" id="onboarding-banner" hidden>
-          <div class="onboarding-banner-inner">
-            <div class="onboarding-banner-copy">
-              <h2 class="onboarding-banner-title">Welcome to Syntra</h2>
-              <ul class="onboarding-tips">
-                <li><strong>Double-click</strong> a task, note, or standup row to edit it quickly.</li>
-                <li>Enable <strong>reminder notifications</strong> in Settings to get popup alerts when due.</li>
-                <li>Link your <strong>profile</strong> to a team member to use <strong>My Work</strong> and default standup assignee.</li>
-              </ul>
-            </div>
-            <div class="onboarding-banner-actions">
-              <button type="button" class="onboarding-settings-link" id="onboarding-open-settings">Open Settings</button>
-              <button type="button" class="onboarding-dismiss-btn" id="onboarding-dismiss">Got it</button>
+        <div class="view-panel" data-view="dashboard">
+          <div class="onboarding-banner" id="onboarding-banner" hidden>
+            <div class="onboarding-banner-inner">
+              <div class="onboarding-banner-copy">
+                <h2 class="onboarding-banner-title">Welcome to Syntra</h2>
+                <ul class="onboarding-tips">
+                  <li><strong>Double-click</strong> a task, note, or standup row to edit it quickly.</li>
+                  <li>Enable <strong>reminder notifications</strong> in Settings to get popup alerts when due.</li>
+                  <li>Link your <strong>profile</strong> to a team member to use <strong>My Work</strong> and default standup assignee.</li>
+                </ul>
+              </div>
+              <div class="onboarding-banner-actions">
+                <button type="button" class="onboarding-settings-link" id="onboarding-open-settings">Open Settings</button>
+                <button type="button" class="onboarding-dismiss-btn" id="onboarding-dismiss">Got it</button>
+              </div>
             </div>
           </div>
+
+          <section class="dashboard-cards">
+            <div class="stat-card">
+              <span class="stat-label">Total Tasks</span>
+              <span class="stat-value" id="stat-total-tasks">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Completed</span>
+              <span class="stat-value" id="stat-completed">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Due Today</span>
+              <span class="stat-value" id="stat-due-today">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Overdue</span>
+              <span class="stat-value" id="stat-overdue">0</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-label">Team Members</span>
+              <span class="stat-value" id="stat-team-members">0</span>
+            </div>
+          </section>
+
+          <section class="section section-collapsible" id="standup-summary" data-default-expanded="true">
+            <div class="section-header">
+              <button type="button" class="section-collapse-btn" aria-label="Collapse Today's Standup section" aria-expanded="true">
+                <span class="section-collapse-chevron" aria-hidden="true"></span>
+              </button>
+              <h2 class="section-title">Today's Standup <span class="standup-summary-count" id="standup-summary-count"></span></h2>
+              <div class="section-header-actions">
+                <button type="button" class="standup-summary-copy-btn" id="standup-summary-copy-btn" aria-label="Copy all standup updates for today" title="Copy all today's standups">
+                  Copy all
+                </button>
+              </div>
+            </div>
+            <div class="section-content">
+              <div class="section-body standup-summary-body" id="standup-summary-list">
+                <p class="empty">Loading today's updates...</p>
+              </div>
+            </div>
+          </section>
         </div>
 
-        <section class="dashboard-cards">
-          <div class="stat-card">
-            <span class="stat-label">Total Tasks</span>
-            <span class="stat-value" id="stat-total-tasks">0</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Completed</span>
-            <span class="stat-value" id="stat-completed">0</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Due Today</span>
-            <span class="stat-value" id="stat-due-today">0</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Overdue</span>
-            <span class="stat-value" id="stat-overdue">0</span>
-          </div>
-          <div class="stat-card">
-            <span class="stat-label">Team Members</span>
-            <span class="stat-value" id="stat-team-members">0</span>
-          </div>
-        </section>
-
-        <section class="section section-collapsible" id="standup-summary" data-default-expanded="true">
+        <div class="view-panel view-hidden" data-view="my-tasks">
+        <section class="section section-collapsible" id="my-tasks" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Collapse Today's Standup section" aria-expanded="true">
-              <span class="section-collapse-chevron" aria-hidden="true"></span>
-            </button>
-            <h2 class="section-title">Today's Standup <span class="standup-summary-count" id="standup-summary-count"></span></h2>
-            <div class="section-header-actions">
-              <button type="button" class="standup-summary-copy-btn" id="standup-summary-copy-btn" aria-label="Copy all standup updates for today" title="Copy all today's standups">
-                Copy all
-              </button>
-            </div>
-          </div>
-          <div class="section-content">
-            <div class="section-body standup-summary-body" id="standup-summary-list">
-              <p class="empty">Loading today's updates...</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="section section-collapsible is-collapsed" id="my-tasks">
-          <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand My Tasks section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse My Tasks section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">My Tasks</h2>
@@ -149,7 +152,7 @@
               <button type="button" class="section-add-btn" id="task-add-toggle" aria-label="Add task">+</button>
             </div>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
           <div class="create-panel" id="task-create-panel" hidden>
             <form id="task-form" class="inline-create-form">
               <select id="task-group" class="inline-input" required>
@@ -212,10 +215,12 @@
           </div>
           </div>
         </section>
+        </div>
 
-        <section class="section section-collapsible is-collapsed" id="quick-notes">
+        <div class="view-panel view-hidden" data-view="quick-notes">
+        <section class="section section-collapsible" id="quick-notes" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand Quick Notes section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Quick Notes section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">Quick Notes</h2>
@@ -223,7 +228,7 @@
               <button type="button" class="section-add-btn" id="note-add-toggle" aria-label="Add note">+</button>
             </div>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
           <div class="create-panel" id="note-create-panel" hidden>
             <form id="note-form" class="inline-create-form">
               <input type="text" id="note-title" class="inline-input" placeholder="Note title" required>
@@ -246,10 +251,12 @@
           </div>
           </div>
         </section>
+        </div>
 
-        <section class="section section-collapsible is-collapsed" id="team-activity">
+        <div class="view-panel view-hidden" data-view="team-activity">
+        <section class="section section-collapsible" id="team-activity" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand Team Activity section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Team Activity section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">Team Activity</h2>
@@ -257,7 +264,7 @@
               <button type="button" class="section-add-btn" id="team-add-toggle" aria-label="Add team member">+</button>
             </div>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
           <div class="create-panel" id="team-create-panel" hidden>
             <form id="team-form" class="inline-create-form">
               <input type="text" id="team-name" class="inline-input" placeholder="Team member name" required>
@@ -285,15 +292,17 @@
           </div>
           </div>
         </section>
+        </div>
 
-        <section class="section section-collapsible is-collapsed" id="reminders">
+        <div class="view-panel view-hidden" data-view="reminders">
+        <section class="section section-collapsible" id="reminders" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand Reminders section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Reminders section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">Reminders</h2>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
           <div class="section-body">
             <form id="reminder-form" class="reminder-form">
               <input type="text" id="reminder-title" class="reminder-input" placeholder="Reminder task name" required>
@@ -326,30 +335,34 @@
           </div>
           </div>
         </section>
+        </div>
 
-        <section class="section section-collapsible is-collapsed" id="archive">
+        <div class="view-panel view-hidden" data-view="archive">
+        <section class="section section-collapsible" id="archive" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand Archive section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Archive section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">Archive</h2>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
             <p class="section-description">Archived task groups and their tasks are kept here for reference.</p>
             <div class="section-body" id="archive-list">
               <p class="empty">Loading archived groups...</p>
             </div>
           </div>
         </section>
+        </div>
 
-        <section class="section section-collapsible is-collapsed" id="mcp-console">
+        <div class="view-panel view-hidden" data-view="mcp-console">
+        <section class="section section-collapsible" id="mcp-console" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand MCP Console section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse MCP Console section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">MCP Console</h2>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
           <div class="section-body">
             <form id="mcp-form" class="mcp-form">
               <input type="text" id="mcp-command" class="mcp-input" placeholder="Type command..." required>
@@ -413,15 +426,17 @@
           </div>
           </div>
         </section>
+        </div>
 
-        <section class="section section-collapsible is-collapsed" id="settings">
+        <div class="view-panel view-hidden" data-view="settings">
+        <section class="section section-collapsible" id="settings" data-default-expanded="true">
           <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Expand Settings section" aria-expanded="false">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Settings section" aria-expanded="true">
               <span class="section-collapse-chevron" aria-hidden="true"></span>
             </button>
             <h2 class="section-title">Settings</h2>
           </div>
-          <div class="section-content" hidden>
+          <div class="section-content">
             <div class="section-body settings-body">
               <div class="settings-group">
                 <h3 class="settings-group-title">Appearance</h3>
@@ -491,6 +506,7 @@
             </div>
           </div>
         </section>
+        </div>
       </div>
     </div>
   </div>

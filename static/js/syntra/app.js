@@ -45,16 +45,23 @@ function initApp() {
   }
 
   document.querySelectorAll(".nav-link").forEach((link) => {
-    link.addEventListener("click", () => {
-      document.querySelectorAll(".nav-link").forEach((item) => item.classList.remove("active"));
-      link.classList.add("active");
-
-      const href = link.getAttribute("href");
-      if (href && href.startsWith("#")) {
-        Syntra.ui.expandSection(href.slice(1));
-      }
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      const viewId = link.dataset.view || link.getAttribute("href")?.replace("#", "");
+      if (viewId) Syntra.ui.showView(viewId);
     });
   });
+
+  // Restore last active view, or default to dashboard
+  (function restoreActiveView() {
+    let viewId = "dashboard";
+    try {
+      viewId = localStorage.getItem("syntra-active-view") || "dashboard";
+    } catch (_err) {
+      viewId = "dashboard";
+    }
+    Syntra.ui.showView(viewId);
+  })();
 
   Syntra.core.initConfirmModal();
   Syntra.profile.initProfileModal();

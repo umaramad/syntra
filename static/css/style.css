@@ -361,6 +361,16 @@ body {
   min-width: 0;
 }
 
+/* View panels — one visible at a time based on nav selection */
+
+.view-panel {
+  display: block;
+}
+
+.view-panel.view-hidden {
+  display: none;
+}
+
 /* Dashboard stat cards */
 
 .dashboard-cards {

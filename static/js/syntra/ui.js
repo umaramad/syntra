@@ -118,6 +118,53 @@ function expandSection(sectionOrId) {
   }
 }
 
+// Map a section id to its view id (some sections live inside a named view-panel)
+function resolveViewId(sectionOrViewId) {
+  // Direct view-panel match
+  const panel = document.querySelector(`.view-panel[data-view="${sectionOrViewId}"]`);
+  if (panel) return sectionOrViewId;
+  // Section may be nested inside a view-panel
+  const section = document.getElementById(sectionOrViewId);
+  if (section) {
+    const parentPanel = section.closest(".view-panel[data-view]");
+    if (parentPanel) return parentPanel.dataset.view;
+  }
+  return null;
+}
+
+function showView(viewId) {
+  // Hide all view panels
+  document.querySelectorAll(".view-panel").forEach((panel) => {
+    panel.classList.add("view-hidden");
+    panel.setAttribute("aria-hidden", "true");
+  });
+
+  // Show the target panel
+  const target = document.querySelector(`.view-panel[data-view="${viewId}"]`);
+  if (target) {
+    target.classList.remove("view-hidden");
+    target.removeAttribute("aria-hidden");
+  }
+
+  // Sync nav active state
+  document.querySelectorAll(".nav-link").forEach((link) => {
+    const linkView = link.dataset.view || link.getAttribute("href")?.replace("#", "");
+    const resolved = resolveViewId(linkView);
+    link.classList.toggle("active", resolved === viewId || linkView === viewId);
+  });
+
+  // Persist active view
+  try {
+    localStorage.setItem("syntra-active-view", viewId);
+  } catch (_err) {
+    /* ignore */
+  }
+
+  // Scroll content area to top
+  const content = document.getElementById("dashboard");
+  if (content) content.scrollTop = 0;
+}
+
 function initSectionCollapse() {
   const stored = readStoredSectionStates();
   document.querySelectorAll(".section-collapsible").forEach((section) => {
@@ -280,6 +327,6 @@ const RESTORE_ICON = `
   Syntra.constants.COPY_ICON = COPY_ICON;
   Syntra.constants.DELETE_ICON = DELETE_ICON;
   Syntra.constants.RESTORE_ICON = RESTORE_ICON;
-  Syntra.ui = { setSidebarCollapsed, initSidebarToggle, updateDashboardStats, setSectionCollapsed, expandSection, initSectionCollapse, persistSectionStates, toggleCreatePanel, closeCreatePanel, renderDeleteButton, renderActionsCell, highlightRow, highlightStandupRow, openEditPanel, deleteResource, bindEditableList };
+  Syntra.ui = { setSidebarCollapsed, initSidebarToggle, updateDashboardStats, setSectionCollapsed, expandSection, showView, initSectionCollapse, persistSectionStates, toggleCreatePanel, closeCreatePanel, renderDeleteButton, renderActionsCell, highlightRow, highlightStandupRow, openEditPanel, deleteResource, bindEditableList };
 
 })(window);

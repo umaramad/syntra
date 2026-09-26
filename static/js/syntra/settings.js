@@ -282,10 +282,7 @@ function initOnboarding() {
   document.getElementById("onboarding-dismiss")?.addEventListener("click", dismiss);
   document.getElementById("onboarding-open-settings")?.addEventListener("click", () => {
     dismiss();
-    document.querySelectorAll(".nav-link").forEach((item) => item.classList.remove("active"));
-    const settingsLink = document.querySelector('.nav-link[href="#settings"]');
-    if (settingsLink) settingsLink.classList.add("active");
-    Syntra.ui.expandSection("settings");
+    Syntra.ui.showView("settings");
   });
 }
 
