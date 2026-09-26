@@ -310,7 +310,7 @@ function renderStandupSummary(entries) {
 }
 
 function openTaskFromSummary(taskId) {
-  Syntra.ui.expandSection("my-tasks");
+  Syntra.ui.showView("my-tasks");
 
   const tasksList = document.getElementById("tasks-list");
   let card = tasksList?.querySelector(`.task-card[data-id="${taskId}"]`);
@@ -586,6 +586,11 @@ function renderTaskGroupBlock(group, options = {}) {
   const groupTasks = group.tasks;
   const isCollapsed = !expandedSet.has(groupKeyPrefix + groupName);
   const groupKey = encodeURIComponent(groupName);
+
+  const doneCount = groupTasks.filter((t) => t.status === "done").length;
+  const totalCount = groupTasks.length;
+  const progressPct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+
   const groupActions =
     group.id
       ? `<div class="task-group-actions">
@@ -604,7 +609,10 @@ function renderTaskGroupBlock(group, options = {}) {
         <button type="button" class="task-group-header" aria-expanded="${!isCollapsed}">
           <span class="task-group-chevron" aria-hidden="true"></span>
           <span class="task-group-name">${Syntra.core.escapeHtml(groupName)}</span>
-          <span class="task-group-count">${groupTasks.length}</span>
+          <span class="task-group-progress-wrap" aria-label="${doneCount} of ${totalCount} done">
+            <span class="task-group-progress-bar"><span class="task-group-progress-fill" style="width:${progressPct}%"></span></span>
+            <span class="task-group-count">${doneCount}/${totalCount}</span>
+          </span>
         </button>
         ${groupActions}
       </div>
@@ -848,43 +856,78 @@ function renderTaskCard(task) {
   const defaultMemberId = getDefaultStandupMemberId(task);
   const priority = task.priority || "medium";
   const assigneeName = task.assignee_name || "";
-  const assigneeCell = assigneeName
-    ? `<span class="task-card-avatar" aria-hidden="true">${Syntra.core.escapeHtml(getTaskInitials(assigneeName))}</span><span class="task-card-assignee">${Syntra.core.escapeHtml(assigneeName)}</span>`
-    : '<span class="task-card-assignee task-card-assignee--none">Unassigned</span>';
+  const isOverdueTask = !isDone && task.status !== "cancelled" && global.SyntraDateTime.isOverdue(task.due_date);
+  const isTodayTask = !isDone && task.status !== "cancelled" && global.SyntraDateTime.isToday(task.due_date);
+
+  const dueDateHtml = task.due_date
+    ? `<span class="task-card-due${isOverdueTask ? " is-overdue" : isTodayTask ? " is-today" : ""}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 12h-5v5h5v-5zM16 1v2H8V1H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2h-1V1h-2zm3 18H5V8h14v11z"/></svg>
+        ${Syntra.core.escapeHtml(global.SyntraDateTime.formatDateInput(task.due_date))}
+       </span>`
+    : "";
+
+  const assigneeHtml = assigneeName
+    ? `<span class="task-card-assignee-chip">
+        <span class="task-card-avatar" aria-hidden="true">${Syntra.core.escapeHtml(getTaskInitials(assigneeName))}</span>
+        <span>${Syntra.core.escapeHtml(assigneeName)}</span>
+       </span>`
+    : `<span class="task-card-assignee-chip task-card-assignee-chip--none">Unassigned</span>`;
 
   return `
-    <div class="task-card${isDone ? " is-done" : ""}${isSearchMatch ? " search-match" : ""}" data-id="${task.id}" title="Double-click to edit">
-      <div class="task-card-header">
-        <button type="button" class="task-done-toggle${isDone ? " is-done" : ""}" data-id="${task.id}" aria-label="${isDone ? "Mark as pending" : "Mark as done"}" title="${isDone ? "Mark as pending" : "Mark as done"}">${isDone ? "✓" : ""}</button>
-        <span class="task-card-title">${Syntra.core.escapeHtml(task.title)}</span>
-        <span class="status status-${task.status}">${Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(task.status))}</span>
-        <span class="task-card-priority task-card-priority--${priority}">${Syntra.core.escapeHtml(priority)}</span>
+    <div class="task-card${isDone ? " is-done" : ""}${isSearchMatch ? " search-match" : ""}${isOverdueTask ? " is-overdue" : ""}" data-id="${task.id}" title="Double-click to edit">
+      <div class="task-card-main">
+        <button type="button" class="task-done-toggle${isDone ? " is-done" : ""}" data-id="${task.id}" aria-label="${isDone ? "Mark as pending" : "Mark as done"}" title="${isDone ? "Mark as pending" : "Mark as done"}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+        </button>
+        <div class="task-card-body">
+          <span class="task-card-title">${Syntra.core.escapeHtml(task.title)}</span>
+          <div class="task-card-chips">
+            <span class="task-chip task-chip--status task-chip--${task.status}">${Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(task.status))}</span>
+            <span class="task-chip task-chip--priority task-chip--${priority}">${Syntra.core.escapeHtml(priority)}</span>
+            ${assigneeHtml}
+            ${dueDateHtml}
+          </div>
+        </div>
         <div class="task-card-actions">
-          <button type="button" class="task-comments-btn" data-id="${task.id}" aria-label="View standup updates" title="Standup updates">
-            <span class="task-comments-icon" aria-hidden="true">💬</span>
-            <span class="task-comments-count" id="task-comment-count-${task.id}">${commentCount}</span>
+          <button type="button" class="task-action-btn task-comments-btn" data-id="${task.id}" aria-label="Standup updates" title="Standup updates">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg>
+            ${commentCount > 0 ? `<span class="task-comments-count" id="task-comment-count-${task.id}">${commentCount}</span>` : `<span class="task-comments-count" id="task-comment-count-${task.id}" hidden></span>`}
           </button>
-          <button type="button" class="task-edit-btn" data-id="${task.id}" aria-label="Edit task" title="Edit task">${TASK_EDIT_ICON}</button>
-          ${Syntra.ui.renderDeleteButton(task.id, "task")}
+          <button type="button" class="task-action-btn task-edit-btn" data-id="${task.id}" aria-label="Edit task" title="Edit task">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+          <button type="button" class="task-action-btn task-action-btn--danger row-delete-btn" data-id="${task.id}" aria-label="Delete task" title="Delete">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"/></svg>
+          </button>
         </div>
       </div>
-      <div class="task-card-meta">
-        <span class="task-card-meta-item">${assigneeCell}</span>
-        <span class="task-card-meta-item">${Syntra.search.renderDueDateCell(task)}</span>
-      </div>
       <div class="task-card-edit" id="task-card-edit-${task.id}" hidden>
-        <select class="task-card-edit-status" aria-label="Status">
-          ${renderStandupStatusOptions(task.status || "pending")}
-        </select>
-        <select class="task-card-edit-priority" aria-label="Priority">
-          ${renderPriorityOptions(task.priority || "medium")}
-        </select>
-        <select class="task-card-edit-assignee" aria-label="Assign to team member">
-          ${renderStandupMemberOptions(task.assigned_to)}
-        </select>
-        <input type="date" class="task-card-edit-due" aria-label="Due date" value="${Syntra.core.escapeHtml(formatDateInput(task.due_date))}">
+        <div class="task-card-edit-grid">
+          <div class="task-card-edit-field">
+            <label class="task-card-edit-label">Status</label>
+            <select class="task-card-edit-status task-card-edit-input" aria-label="Status">
+              ${renderStandupStatusOptions(task.status || "pending")}
+            </select>
+          </div>
+          <div class="task-card-edit-field">
+            <label class="task-card-edit-label">Priority</label>
+            <select class="task-card-edit-priority task-card-edit-input" aria-label="Priority">
+              ${renderPriorityOptions(task.priority || "medium")}
+            </select>
+          </div>
+          <div class="task-card-edit-field">
+            <label class="task-card-edit-label">Assignee</label>
+            <select class="task-card-edit-assignee task-card-edit-input" aria-label="Assign to team member">
+              ${renderStandupMemberOptions(task.assigned_to)}
+            </select>
+          </div>
+          <div class="task-card-edit-field">
+            <label class="task-card-edit-label">Due date</label>
+            <input type="date" class="task-card-edit-due task-card-edit-input" aria-label="Due date" value="${Syntra.core.escapeHtml(global.SyntraDateTime.formatDateInput(task.due_date))}">
+          </div>
+        </div>
         <div class="task-card-edit-actions">
-          <button type="button" class="task-card-edit-save" data-id="${task.id}">Save</button>
+          <button type="button" class="task-card-edit-save" data-id="${task.id}">Save changes</button>
           <button type="button" class="task-card-edit-cancel" data-id="${task.id}">Cancel</button>
         </div>
       </div>
@@ -988,7 +1031,10 @@ function toggleStandupBody(taskId) {
 
 function updateTaskCommentCount(taskId, count) {
   const badge = document.getElementById(`task-comment-count-${taskId}`);
-  if (badge) badge.textContent = count;
+  if (badge) {
+    badge.textContent = count > 0 ? count : "";
+    badge.hidden = count === 0;
+  }
   const task = Syntra.state.taskCache.find((item) => item.id === taskId);
   if (task) task.comment_count = count;
 }
@@ -1369,8 +1415,26 @@ function bindReminderListEvents() {
 }
 
 function initCreatePanels() {
+  // Add task button — show/hide the new task create panel
+  const taskAddBtn = document.getElementById("task-add-toggle");
+  if (taskAddBtn) {
+    taskAddBtn.addEventListener("click", () => {
+      const panel = document.getElementById("task-create-panel");
+      if (!panel) return;
+      const isOpen = !panel.hidden;
+      if (isOpen) {
+        panel.hidden = true;
+        taskAddBtn.classList.remove("is-active");
+      } else {
+        panel.hidden = false;
+        taskAddBtn.classList.add("is-active");
+        const firstInput = panel.querySelector("input:not([type='hidden']):not([hidden]), select");
+        if (firstInput) firstInput.focus();
+      }
+    });
+  }
+
   const toggles = [
-    { btn: "task-add-toggle", panel: "task-create-panel" },
     { btn: "note-add-toggle", panel: "note-create-panel" },
     { btn: "team-add-toggle", panel: "team-create-panel" },
   ];
@@ -1383,7 +1447,27 @@ function initCreatePanels() {
   });
 
   document.querySelectorAll(".inline-cancel").forEach((btn) => {
-    btn.addEventListener("click", () => Syntra.ui.closeCreatePanel(btn.dataset.panel));
+    btn.addEventListener("click", () => {
+      const panelId = btn.dataset.panel;
+      if (panelId === "task-create-panel") {
+        const panel = document.getElementById("task-create-panel");
+        if (panel) panel.hidden = true;
+        const addBtn = document.getElementById("task-add-toggle");
+        if (addBtn) addBtn.classList.remove("is-active");
+      } else {
+        Syntra.ui.closeCreatePanel(panelId);
+      }
+    });
+  });
+
+  // Also handle the task-create-cancel button (new design uses .task-create-cancel)
+  document.querySelectorAll(".task-create-cancel").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const panel = document.getElementById("task-create-panel");
+      if (panel) panel.hidden = true;
+      const addBtn = document.getElementById("task-add-toggle");
+      if (addBtn) addBtn.classList.remove("is-active");
+    });
   });
 
   const taskForm = document.getElementById("task-form");

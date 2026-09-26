@@ -142,32 +142,58 @@
         </div>
 
         <div class="view-panel view-hidden" data-view="my-tasks">
-        <section class="section section-collapsible" id="my-tasks" data-default-expanded="true">
-          <div class="section-header">
-            <button type="button" class="section-collapse-btn" aria-label="Collapse My Tasks section" aria-expanded="true">
-              <span class="section-collapse-chevron" aria-hidden="true"></span>
-            </button>
-            <h2 class="section-title">My Tasks</h2>
-            <div class="section-header-actions">
-              <button type="button" class="section-add-btn" id="task-add-toggle" aria-label="Add task">+</button>
+        <div class="tasks-view">
+
+          <!-- Toolbar: title + add button -->
+          <div class="tasks-toolbar">
+            <div class="tasks-toolbar-left">
+              <h2 class="tasks-view-title">My Tasks</h2>
+            </div>
+            <div class="tasks-toolbar-right">
+              <button type="button" class="tasks-add-btn" id="task-add-toggle" aria-label="Add task">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                Add Task
+              </button>
             </div>
           </div>
-          <div class="section-content">
-          <div class="create-panel" id="task-create-panel" hidden>
-            <form id="task-form" class="inline-create-form">
-              <select id="task-group" class="inline-input" required>
-                <option value="">Select group</option>
-              </select>
-              <input type="text" id="task-group-new" class="inline-input" placeholder="Enter new group name" hidden>
-              <input type="text" id="task-title" class="inline-input" placeholder="Task title" required>
-              <select id="task-assignee" class="inline-input">
-                <option value="">Assign to team member</option>
-              </select>
-              <input type="date" id="task-due" class="inline-input" title="Due date">
-              <button type="submit" class="inline-submit">Create</button>
-              <button type="button" class="inline-cancel" data-panel="task-create-panel">Cancel</button>
+
+          <!-- Add task form (slide-down) -->
+          <div class="task-create-panel-wrap" id="task-create-panel" hidden>
+            <form id="task-form" class="task-create-form">
+              <div class="task-create-row">
+                <div class="task-create-field task-create-field--wide">
+                  <label class="task-create-label" for="task-title">Task title</label>
+                  <input type="text" id="task-title" class="task-create-input" placeholder="What needs to be done?" required autocomplete="off">
+                </div>
+                <div class="task-create-field">
+                  <label class="task-create-label" for="task-group">Group</label>
+                  <select id="task-group" class="task-create-input" required>
+                    <option value="">Select group</option>
+                  </select>
+                </div>
+                <div class="task-create-field" id="task-group-new-wrap" hidden>
+                  <label class="task-create-label" for="task-group-new">New group name</label>
+                  <input type="text" id="task-group-new" class="task-create-input" placeholder="Enter group name" hidden>
+                </div>
+                <div class="task-create-field">
+                  <label class="task-create-label" for="task-assignee">Assign to</label>
+                  <select id="task-assignee" class="task-create-input">
+                    <option value="">Unassigned</option>
+                  </select>
+                </div>
+                <div class="task-create-field">
+                  <label class="task-create-label" for="task-due">Due date</label>
+                  <input type="date" id="task-due" class="task-create-input">
+                </div>
+              </div>
+              <div class="task-create-actions">
+                <button type="submit" class="task-create-submit">Create Task</button>
+                <button type="button" class="task-create-cancel" data-panel="task-create-panel">Cancel</button>
+              </div>
             </form>
           </div>
+
+          <!-- Standup edit panel -->
           <div class="create-panel edit-panel" id="standup-edit-panel" hidden>
             <form id="standup-edit-form" class="inline-create-form">
               <input type="hidden" id="standup-edit-task-id">
@@ -186,19 +212,23 @@
               <button type="button" class="inline-cancel" data-panel="standup-edit-panel">Cancel</button>
             </form>
           </div>
-          <div class="task-filters" id="task-filters">
-            <button type="button" class="task-filter-my-work-btn" id="task-filter-my-work" disabled aria-pressed="false" title="Link a team member in Profile to use My Work">
+
+          <!-- Filter bar -->
+          <div class="tasks-filter-bar" id="task-filters">
+            <button type="button" class="task-filter-chip task-filter-my-work-btn" id="task-filter-my-work" disabled aria-pressed="false" title="Link a team member in Profile to use My Work">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/></svg>
               My Work
             </button>
+            <div class="task-filter-divider" aria-hidden="true"></div>
             <select id="task-filter-status" class="task-filter-select" aria-label="Filter by status">
-              <option value="">All statuses</option>
+              <option value="">All Statuses</option>
               <option value="pending">Pending</option>
-              <option value="in_progress">In progress</option>
+              <option value="in_progress">In Progress</option>
               <option value="done">Done</option>
               <option value="cancelled">Cancelled</option>
             </select>
             <select id="task-filter-priority" class="task-filter-select" aria-label="Filter by priority">
-              <option value="">All priorities</option>
+              <option value="">All Priorities</option>
               <option value="high_plus">High + Urgent</option>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
@@ -206,15 +236,17 @@
               <option value="urgent">Urgent</option>
             </select>
             <select id="task-filter-assignee" class="task-filter-select" aria-label="Filter by assignee">
-              <option value="">All assignees</option>
+              <option value="">All Assignees</option>
               <option value="unassigned">Unassigned</option>
             </select>
           </div>
-          <div class="section-body" id="tasks-list">
+
+          <!-- Task list -->
+          <div class="tasks-list-body" id="tasks-list">
             <p class="empty">Loading tasks...</p>
           </div>
-          </div>
-        </section>
+
+        </div>
         </div>
 
         <div class="view-panel view-hidden" data-view="quick-notes">
