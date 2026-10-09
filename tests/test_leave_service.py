@@ -152,6 +152,27 @@ def test_deleting_member_cascades_their_leave_plans(db_path, team_member):
         assert row["total"] == 0
 
 
+def test_backup_round_trip_preserves_leave_plans(db_path, team_member):
+    from services.backup_service import BackupService
+
+    service = LeaveService()
+    service.create_plan(team_member.id, "2026-10-12", "2026-10-14", "Backup trip")
+
+    backup = BackupService().export_backup()
+    assert len(backup["tables"]["leave_plans"]) == 1
+
+    with get_db() as conn:
+        conn.execute("DELETE FROM leave_plans")
+    assert service.list_plans() == []
+
+    BackupService().import_backup(backup)
+    restored = service.list_plans()
+    assert len(restored) == 1
+    assert restored[0].start_date == "2026-10-12"
+    assert restored[0].details == "Backup trip"
+    assert restored[0].member_name == "Alex"
+
+
 def test_route_create_and_get(db_path, team_member):
     from app import create_app
 
