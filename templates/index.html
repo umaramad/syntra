@@ -304,6 +304,12 @@
         </div>
 
         <div class="view-panel view-hidden" data-view="team-activity">
+        <div class="team-view-tabs" role="tablist" aria-label="Team views">
+          <button type="button" class="team-tab-btn is-active" data-tab="team-members-pane" aria-pressed="true">Team Activity</button>
+          <button type="button" class="team-tab-btn" data-tab="team-availability-pane" aria-pressed="false">Availability</button>
+        </div>
+
+        <div id="team-members-pane">
         <section class="section section-collapsible" id="team-activity" data-default-expanded="true">
           <div class="section-header">
             <button type="button" class="section-collapse-btn" aria-label="Collapse Team Activity section" aria-expanded="true">
@@ -337,11 +343,66 @@
               <button type="button" class="inline-cancel" data-panel="team-edit-panel">Cancel</button>
             </form>
           </div>
+          <div class="create-panel" id="leave-form-panel" hidden>
+            <form id="leave-form" class="inline-create-form">
+              <input type="hidden" id="leave-edit-id">
+              <h3 class="create-panel-title" id="leave-form-title">Leave plan</h3>
+              <select id="leave-member" class="inline-input" required aria-label="Team member">
+                <option value="">Select member</option>
+              </select>
+              <input type="date" id="leave-start" class="inline-input" required aria-label="From date">
+              <input type="date" id="leave-end" class="inline-input" required aria-label="To date">
+              <textarea id="leave-details" class="inline-input leave-details-input" placeholder="Details (optional)" maxlength="500" rows="2" aria-label="Details"></textarea>
+              <button type="submit" class="inline-submit">Save</button>
+              <button type="button" class="inline-cancel" data-panel="leave-form-panel">Cancel</button>
+            </form>
+          </div>
+          <div class="create-panel" id="leave-list-panel" hidden>
+            <div class="leave-list-header">
+              <h3 class="create-panel-title" id="leave-list-title">Leave plans</h3>
+              <button type="button" class="inline-cancel" data-panel="leave-list-panel">Close</button>
+            </div>
+            <div class="leave-list-body" id="leave-list-body"></div>
+          </div>
           <div class="section-body" id="team-list">
             <p class="empty">Loading team...</p>
           </div>
           </div>
         </section>
+        </div>
+
+        <div id="team-availability-pane" hidden>
+        <section class="section section-collapsible" id="team-availability" data-default-expanded="true">
+          <div class="section-header">
+            <button type="button" class="section-collapse-btn" aria-label="Collapse Availability section" aria-expanded="true">
+              <span class="section-collapse-chevron" aria-hidden="true"></span>
+            </button>
+            <h2 class="section-title">Availability</h2>
+            <div class="section-header-actions">
+              <div class="availability-mode-toggle" role="group" aria-label="Availability range">
+                <button type="button" class="availability-mode-btn is-active" data-mode="today" aria-pressed="true">Today</button>
+                <button type="button" class="availability-mode-btn" data-mode="month" aria-pressed="false">Month</button>
+              </div>
+            </div>
+          </div>
+          <div class="section-content">
+            <div class="availability-body">
+              <div id="availability-today"></div>
+              <div id="availability-month-view" hidden>
+                <div class="availability-month-header">
+                  <button type="button" class="availability-nav-btn" id="availability-month-prev" aria-label="Previous month">&#8249;</button>
+                  <span class="availability-month-label" id="availability-month-label"></span>
+                  <button type="button" class="availability-nav-btn" id="availability-month-next" aria-label="Next month">&#8250;</button>
+                  <button type="button" class="availability-today-btn" id="availability-month-today">Today</button>
+                </div>
+                <div class="availability-grid" id="availability-grid"></div>
+                <div class="availability-drilldown" id="availability-drilldown" hidden></div>
+              </div>
+            </div>
+          </div>
+        </section>
+        </div>
+
         </div>
 
         <div class="view-panel view-hidden" data-view="reminders">
@@ -639,6 +700,7 @@
   <script src="/static/js/syntra/reminders.js"></script>
   <script src="/static/js/syntra/tasks.js"></script>
   <script src="/static/js/syntra/mcp.js"></script>
+  <script src="/static/js/syntra/availability.js"></script>
   <script src="/static/js/syntra/app.js"></script>
   <script src="/static/js/app.js"></script>
 </body>

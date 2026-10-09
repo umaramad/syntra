@@ -18,6 +18,7 @@ const scripts = [
   "syntra/reminders.js",
   "syntra/tasks.js",
   "syntra/mcp.js",
+  "syntra/availability.js",
   "syntra/app.js",
   "app.js",
 ];
@@ -166,7 +167,7 @@ for (const rel of scripts) {
   vm.runInNewContext(code, window, { filename: file });
 }
 
-const required = ["constants", "state", "core", "ui", "profile", "settings", "search", "reminders", "tasks", "mcp", "app"];
+const required = ["constants", "state", "core", "ui", "profile", "settings", "search", "reminders", "tasks", "mcp", "availability", "app"];
 const missing = required.filter((k) => !window.Syntra?.[k]);
 if (missing.length) {
   console.error("Missing Syntra modules:", missing.join(", "));
@@ -181,6 +182,40 @@ try {
 }
 
 console.log("OK: Syntra namespace loaded, initApp ran without error");
+
+// Pure availability helper checks (spec: single-day hit, range covering a day,
+// misses before/after, month-boundary span, availability exclusion, initials).
+const { onLeaveOn, availableOn, initialsFor } = window.Syntra.availability;
+const leaves = [
+  { id: 1, team_member_id: 1, start_date: "2026-10-12", end_date: "2026-10-12" },
+  { id: 2, team_member_id: 2, start_date: "2026-09-30", end_date: "2026-10-02" },
+  { id: 3, team_member_id: 3, start_date: "2026-10-20", end_date: "2026-10-25" },
+];
+const members = [
+  { id: 1, name: "Ada Lovelace" },
+  { id: 2, name: "Grace" },
+  { id: 3, name: "Alan Turing" },
+  { id: 4, name: "Katherine Johnson" },
+];
+const checks = [
+  [onLeaveOn(leaves, "2026-10-12").length === 1, "single-day leave hits its own date"],
+  [onLeaveOn(leaves, "2026-10-11").length === 0, "day before a leave misses"],
+  [onLeaveOn(leaves, "2026-10-13").length === 0, "day after a single-day leave misses"],
+  [onLeaveOn(leaves, "2026-09-30").length === 1, "multi-day leave hits start date"],
+  [onLeaveOn(leaves, "2026-10-01").length === 1, "leave spanning a month boundary hits in the next month"],
+  [onLeaveOn(leaves, "2026-10-02").length === 1, "leave spanning a month boundary hits its end date"],
+  [onLeaveOn(leaves, "2026-10-03").length === 0, "day after a multi-day leave misses"],
+  [availableOn(members, leaves, "2026-10-12").length === 3, "available excludes members on leave"],
+  [availableOn(members, leaves, "2026-10-15").length === 4, "everyone is available on a clear day"],
+  [initialsFor("Ada Lovelace") === "AL", "initials from two words"],
+  [initialsFor("Grace") === "GR", "initials from one word"],
+];
+const failed = checks.filter(([ok]) => !ok);
+if (failed.length) {
+  failed.forEach(([, msg]) => console.error(`FAIL: ${msg}`));
+  process.exit(1);
+}
+console.log(`OK: ${checks.length} availability helper checks passed`);
 console.log(
   "Exports:",
   Object.keys(window.Syntra)

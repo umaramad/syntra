@@ -1,3 +1,4 @@
+import sqlite3
 from typing import Optional
 
 from models.team_member import TeamMember
@@ -66,4 +67,10 @@ class TeamService:
     def delete_member(self, member_id: int) -> bool:
         if not self.repository.find_by_id(member_id):
             return False
-        return self.repository.delete(member_id)
+        try:
+            return self.repository.delete(member_id)
+        except sqlite3.IntegrityError as exc:
+            # Safety net: some other table still references this member.
+            raise ValueError(
+                "Member is still referenced by other records and cannot be deleted"
+            ) from exc

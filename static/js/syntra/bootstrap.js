@@ -9,6 +9,7 @@
     archivedTaskGroups: "/api/task-groups/archived",
     notes: "/api/notes",
     team: "/api/team",
+    leavePlans: "/api/leave-plans",
     reminders: "/api/reminders",
     mcp: "/api/mcp",
     profile: "/api/profile",
@@ -61,6 +62,7 @@
   const taskCommentsCache = {};
   let noteCache = [];
   let teamCache = [];
+  let leavePlanCache = [];
   let reminderCache = [];
   let profileCache = null;
   let settingsCache = {
@@ -118,6 +120,7 @@
     taskCommentsCache,
     noteCache,
     teamCache,
+    leavePlanCache,
     reminderCache,
     profileCache,
     settingsCache,

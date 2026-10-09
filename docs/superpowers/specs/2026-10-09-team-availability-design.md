@@ -63,7 +63,7 @@ Base route registered in `app.py` alongside the others. Service raises `ValueErr
 
 | Route | Body / query | Success | Errors |
 |---|---|---|---|
-| `GET /api/leave-plans` | optional `?member_id=<int>` | `200` `[leavePlan, …]` ordered by `start_date DESC, id DESC` | — |
+| `GET /api/leave-plans` | optional `?member_id=<int>` | `200` `[leavePlan, …]` ordered by `start_date DESC, id DESC`; unknown member → `[]` | `400 {error}` (malformed `member_id`) |
 | `POST /api/leave-plans` | `{team_member_id, start_date, end_date, details?}` | `201` single `leavePlan` | `400 {error}` |
 | `PUT /api/leave-plans/<id>` | any subset of `{team_member_id, start_date, end_date, details}` | `200` updated `leavePlan` | `400 {error}`, `404 {error}` |
 | `DELETE /api/leave-plans/<id>` | — | `200 {success: true}` | `404 {error}` |

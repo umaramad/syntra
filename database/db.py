@@ -200,7 +200,8 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
         )
     if "assigned_to" not in comment_columns:
         conn.execute(
-            "ALTER TABLE task_comments ADD COLUMN assigned_to INTEGER REFERENCES team_members(id)"
+            "ALTER TABLE task_comments ADD COLUMN assigned_to INTEGER "
+            "REFERENCES team_members(id) ON DELETE SET NULL"
         )
 
     conn.executescript(
@@ -212,7 +213,7 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
             role TEXT,
             team_member_id INTEGER,
             updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (team_member_id) REFERENCES team_members(id)
+            FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL
         );
 
         CREATE TABLE IF NOT EXISTS user_settings (

@@ -43,6 +43,9 @@ def register_team_routes(app: Flask) -> None:
 
     @app.route("/api/team/<int:member_id>", methods=["DELETE"])
     def delete_member(member_id):
-        if not team_service.delete_member(member_id):
-            return jsonify({"error": "Member not found"}), 404
+        try:
+            if not team_service.delete_member(member_id):
+                return jsonify({"error": "Member not found"}), 404
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
         return jsonify({"success": True})

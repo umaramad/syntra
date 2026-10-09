@@ -20,6 +20,34 @@ class TeamRepository(BaseRepository[TeamMember]):
         )
         return self.find_by_id(member_id)
 
+    def delete(self, member_id: int) -> bool:
+        """Delete a member, clearing every foreign key that points at them first.
+
+        tasks.assigned_to, task_comments.assigned_to, reminders.assigned_to and
+        user_profile.team_member_id all reference team_members(id) with no
+        ON DELETE action, so leaving them set would make SQLite raise
+        IntegrityError on the DELETE.
+        """
+        from database.db import get_db
+
+        references = (
+            ("tasks", "assigned_to"),
+            ("task_comments", "assigned_to"),
+            ("reminders", "assigned_to"),
+            ("user_profile", "team_member_id"),
+        )
+        with get_db() as conn:
+            for table, column in references:
+                conn.execute(
+                    f"UPDATE {table} SET {column} = NULL WHERE {column} = ?",
+                    (member_id,),
+                )
+            cursor = conn.execute(
+                f"DELETE FROM {self.table_name} WHERE id = ?",
+                (member_id,),
+            )
+        return cursor.rowcount > 0
+
     def find_by_name_match(self, name: str) -> list[TeamMember]:
         needle = name.strip().lower()
         if not needle:

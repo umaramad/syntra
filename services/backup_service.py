@@ -16,6 +16,7 @@ BACKUP_TABLES: tuple[str, ...] = (
     "task_comments",
     "notes",
     "reminders",
+    "leave_plans",
     "mcp_tools",
     "tool_execution_logs",
     "user_profile",
@@ -29,6 +30,7 @@ _AUTOINCREMENT_TABLES: tuple[str, ...] = (
     "task_comments",
     "notes",
     "reminders",
+    "leave_plans",
     "mcp_tools",
     "tool_execution_logs",
 )

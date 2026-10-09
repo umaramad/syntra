@@ -1871,7 +1871,10 @@ function renderTeamFromCache() {
             <td>${Syntra.core.escapeHtml(member.role || "—")}</td>
             <td>${Syntra.core.escapeHtml(member.email || "—")}</td>
             <td>${Syntra.core.escapeHtml(member.status || "—")}</td>
-            ${Syntra.ui.renderActionsCell(Syntra.ui.renderDeleteButton(member.id, "team member"))}
+            ${Syntra.ui.renderActionsCell(`
+              <button type="button" class="row-config-btn" data-id="${member.id}" aria-haspopup="menu" aria-expanded="false" aria-label="Member actions" title="Actions">
+                ${Syntra.availability.CONFIG_ICON}
+              </button>`)}
           </tr>
         `).join("")}
       </tbody>
@@ -1948,8 +1951,10 @@ async function loadDashboard() {
     loadTaskGroups(),
     loadArchivedGroups(),
     Syntra.profile.loadProfile(),
+    Syntra.availability.loadLeavePlans(),
   ]);
   Syntra.ui.updateDashboardStats(tasks, members);
+  Syntra.availability.renderIfVisible();
   await refreshStandupSummary();
   renderFocusNow();
   Syntra.search.updateMyWorkFilterButton();

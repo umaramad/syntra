@@ -72,6 +72,7 @@ function initApp() {
   Syntra.ui.initSidebarToggle();
   Syntra.search.initSearch();
   Syntra.search.initTaskFilters();
+  Syntra.availability.initAvailability();
   Syntra.reminders.initReminderPopupStack();
   Syntra.tasks.loadDashboard()
     .catch((err) => Syntra.core.toast(err.message, true))

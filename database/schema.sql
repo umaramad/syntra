@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     assigned_to INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (group_id) REFERENCES task_groups(id),
-    FOREIGN KEY (assigned_to) REFERENCES team_members(id)
+    FOREIGN KEY (assigned_to) REFERENCES team_members(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS task_comments (
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS task_comments (
     assigned_to INTEGER,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    FOREIGN KEY (assigned_to) REFERENCES team_members(id)
+    FOREIGN KEY (assigned_to) REFERENCES team_members(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS notes (
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS reminders (
     assigned_to INTEGER,
     status TEXT DEFAULT 'pending',
     created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (assigned_to) REFERENCES team_members(id)
+    FOREIGN KEY (assigned_to) REFERENCES team_members(id) ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_reminders_remind_at ON reminders(remind_at);
@@ -93,8 +93,22 @@ CREATE TABLE IF NOT EXISTS user_profile (
     role TEXT,
     team_member_id INTEGER,
     updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (team_member_id) REFERENCES team_members(id)
+    FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE SET NULL
 );
+
+CREATE TABLE IF NOT EXISTS leave_plans (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    team_member_id INTEGER NOT NULL,
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    details TEXT,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (team_member_id) REFERENCES team_members(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_leave_plans_member ON leave_plans(team_member_id);
+CREATE INDEX IF NOT EXISTS idx_leave_plans_dates ON leave_plans(start_date, end_date);
 
 CREATE TABLE IF NOT EXISTS user_settings (
     id INTEGER PRIMARY KEY CHECK (id = 1),
