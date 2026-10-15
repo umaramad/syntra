@@ -222,26 +222,6 @@
             </form>
           </div>
 
-          <!-- Standup edit panel -->
-          <div class="create-panel edit-panel" id="standup-edit-panel" hidden>
-            <form id="standup-edit-form" class="inline-create-form">
-              <input type="hidden" id="standup-edit-task-id">
-              <input type="hidden" id="standup-edit-id">
-              <select id="standup-edit-member" class="inline-input" required aria-label="Team member">
-                <option value="">Select member</option>
-              </select>
-              <select id="standup-edit-status" class="inline-input" aria-label="Status">
-                <option value="pending">Pending</option>
-                <option value="in_progress">In Progress</option>
-                <option value="done">Done</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-              <input type="text" id="standup-edit-comment" class="inline-input" placeholder="Standup update" required>
-              <button type="submit" class="inline-submit">Save</button>
-              <button type="button" class="inline-cancel" data-panel="standup-edit-panel">Cancel</button>
-            </form>
-          </div>
-
           <!-- Filter bar -->
           <div class="tasks-filter-bar" id="task-filters">
             <button type="button" class="task-filter-chip task-filter-my-work-btn" id="task-filter-my-work" disabled aria-pressed="false" title="Link a team member in Profile to use My Work">
@@ -630,6 +610,81 @@
         </section>
         </div>
       </div>
+    </div>
+  </div>
+
+  <div id="task-edit-modal" class="profile-modal task-edit-modal" hidden aria-hidden="true">
+    <div class="profile-modal-backdrop" data-task-edit-dismiss></div>
+    <div
+      id="task-edit-modal-dialog"
+      class="profile-modal-dialog task-edit-modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="task-edit-modal-title"
+    >
+      <h2 id="task-edit-modal-title" class="profile-modal-title">Edit task</h2>
+      <form id="task-edit-form" class="profile-form">
+        <input type="hidden" name="task_id">
+        <label class="profile-field">
+          <span class="profile-label">Task name</span>
+          <input class="profile-input" type="text" name="title" required maxlength="200">
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Status</span>
+          <select class="profile-input" name="status"></select>
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Priority</span>
+          <select class="profile-input" name="priority"></select>
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Assignee</span>
+          <select class="profile-input" name="assigned_to"></select>
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Due date</span>
+          <input class="profile-input" type="date" name="due_date">
+        </label>
+        <div class="profile-modal-actions">
+          <button type="button" class="profile-modal-btn profile-modal-cancel" id="task-edit-cancel">Cancel</button>
+          <button type="submit" class="profile-modal-btn profile-modal-save">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="standup-edit-modal" class="profile-modal standup-edit-modal" hidden aria-hidden="true">
+    <div class="profile-modal-backdrop" data-standup-edit-dismiss></div>
+    <div
+      id="standup-edit-modal-dialog"
+      class="profile-modal-dialog standup-edit-modal-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="standup-edit-modal-title"
+    >
+      <h2 id="standup-edit-modal-title" class="profile-modal-title">Edit standup update</h2>
+      <form id="standup-edit-form" class="profile-form standup-edit-form">
+        <input type="hidden" id="standup-edit-task-id">
+        <input type="hidden" id="standup-edit-id">
+        <label class="profile-field">
+          <span class="profile-label">Team member</span>
+          <select id="standup-edit-member" class="profile-input standup-select" required aria-label="Team member">
+            <option value="">Select member</option>
+          </select>
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Status</span>
+          <select id="standup-edit-status" class="profile-input standup-select" aria-label="Status"></select>
+        </label>
+        <label class="profile-field">
+          <span class="profile-label">Update</span>
+          <textarea id="standup-edit-comment" class="profile-input standup-edit-comment" rows="4" required maxlength="2000"></textarea>
+        </label>
+        <div class="profile-modal-actions">
+          <button type="button" class="profile-modal-btn profile-modal-cancel" id="standup-edit-cancel">Cancel</button>
+          <button type="submit" class="profile-modal-btn profile-modal-save">Save update</button>
+        </div>
+      </form>
     </div>
   </div>
 

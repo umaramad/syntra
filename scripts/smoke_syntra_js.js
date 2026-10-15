@@ -183,6 +183,23 @@ try {
 
 console.log("OK: Syntra namespace loaded, initApp ran without error");
 
+window.Syntra.state.taskCache = [
+  { id: 101, status: "done" },
+  { id: 102, status: "in_progress" },
+];
+const { canEditStandupUpdate } = window.Syntra.tasks;
+const taskEditChecks = [
+  [canEditStandupUpdate(101) === false, "standup updates on completed tasks are read-only"],
+  [canEditStandupUpdate(102) === true, "standup updates on active tasks remain editable"],
+  [canEditStandupUpdate(999) === false, "standup updates without a known task are not editable"],
+];
+const failedTaskEditChecks = taskEditChecks.filter(([ok]) => !ok);
+if (failedTaskEditChecks.length) {
+  failedTaskEditChecks.forEach(([, msg]) => console.error(`FAIL: ${msg}`));
+  process.exit(1);
+}
+console.log(`OK: ${taskEditChecks.length} completed-task comment editing checks passed`);
+
 // Pure availability helper checks (spec: single-day hit, range covering a day,
 // misses before/after, month-boundary span, availability exclusion, initials).
 const { onLeaveOn, availableOn, initialsFor, currentWeekDates, plansForWeek } = window.Syntra.availability;

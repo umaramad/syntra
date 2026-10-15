@@ -93,6 +93,11 @@ function updateStandupPanelHeader(taskId, count) {
   if (titleEl) titleEl.textContent = `Standup updates (${count})`;
 }
 
+function canEditStandupUpdate(taskId) {
+  const task = Syntra.state.taskCache.find((entry) => entry.id === taskId);
+  return Boolean(task && task.status !== "done");
+}
+
 function buildPlainTextTable(columns, rows, headerText) {
   const colWidths = columns.map((col, index) =>
     Math.max(col.length, ...rows.map((row) => String(row[index]).split("\n")[0].length))
@@ -631,10 +636,6 @@ function updateAssigneeOptions(members) {
     if (select) select.innerHTML = assignOptions;
   });
 
-  document.querySelectorAll(".task-card-edit-assignee").forEach((select) => {
-    select.innerHTML = assignOptions;
-  });
-
   const standupEditMember = document.getElementById("standup-edit-member");
   if (standupEditMember) {
     standupEditMember.innerHTML =
@@ -1035,36 +1036,6 @@ function renderTaskCard(task) {
           </button>
         </div>
       </div>
-      <div class="task-card-edit" id="task-card-edit-${task.id}" hidden>
-        <div class="task-card-edit-grid">
-          <div class="task-card-edit-field">
-            <label class="task-card-edit-label">Status</label>
-            <select class="task-card-edit-status task-card-edit-input" aria-label="Status">
-              ${renderStandupStatusOptions(task.status || "pending")}
-            </select>
-          </div>
-          <div class="task-card-edit-field">
-            <label class="task-card-edit-label">Priority</label>
-            <select class="task-card-edit-priority task-card-edit-input" aria-label="Priority">
-              ${renderPriorityOptions(task.priority || "medium")}
-            </select>
-          </div>
-          <div class="task-card-edit-field">
-            <label class="task-card-edit-label">Assignee</label>
-            <select class="task-card-edit-assignee task-card-edit-input" aria-label="Assign to team member">
-              ${renderStandupMemberOptions(task.assigned_to)}
-            </select>
-          </div>
-          <div class="task-card-edit-field">
-            <label class="task-card-edit-label">Due date</label>
-            <input type="date" class="task-card-edit-due task-card-edit-input" aria-label="Due date" value="${Syntra.core.escapeHtml(global.SyntraDateTime.formatDateInput(task.due_date))}">
-          </div>
-        </div>
-        <div class="task-card-edit-actions">
-          <button type="button" class="task-card-edit-save" data-id="${task.id}">Save changes</button>
-          <button type="button" class="task-card-edit-cancel" data-id="${task.id}">Cancel</button>
-        </div>
-      </div>
       <div class="task-card-standup" id="task-comments-${task.id}"${commentsOpen ? "" : " hidden"}>
         <div class="standup-panel standup-panel-in-card">
           <div class="standup-panel-header">
@@ -1131,7 +1102,7 @@ function renderTaskCommentsList(taskId, comments) {
       </thead>
       <tbody>
         ${comments.map((entry) => `
-          <tr class="editable-standup-row" data-task-id="${taskId}" data-id="${entry.id}" title="Double-click to edit">
+          <tr class="${canEditStandupUpdate(taskId) ? "editable-standup-row" : "readonly-standup-row"}" data-task-id="${taskId}" data-id="${entry.id}" tabindex="-1" title="${canEditStandupUpdate(taskId) ? "Double-click to edit" : "Task completed; update is read-only"}">
             <td>${Syntra.core.escapeHtml(entry.assignee_name || "—")}</td>
             <td><span class="status status-${entry.status || "in_progress"}">${Syntra.core.escapeHtml(Syntra.core.formatTaskStatus(entry.status))}</span></td>
             <td class="standup-update-cell">${Syntra.core.escapeHtml(entry.comment)}</td>
@@ -1228,7 +1199,6 @@ async function deleteTaskComment(taskId, commentId) {
   renderTaskCommentsList(taskId, Syntra.state.taskCommentsCache[taskId]);
   updateTaskCommentCount(taskId, Syntra.state.taskCommentsCache[taskId].length);
   refreshStandupSummary().catch((err) => Syntra.core.toast(err.message, true));
-  Syntra.ui.closeCreatePanel("standup-edit-panel");
   Syntra.core.toast("Standup update deleted");
 }
 
@@ -1246,47 +1216,87 @@ async function updateStandupComment(taskId, commentId, payload) {
   );
   renderTaskCommentsList(taskId, Syntra.state.taskCommentsCache[taskId]);
   refreshStandupSummary().catch((err) => Syntra.core.toast(err.message, true));
-  Syntra.ui.closeCreatePanel("standup-edit-panel");
+  closeStandupEditModal();
   Syntra.core.toast("Standup update saved");
   return entry;
 }
-function closeTaskCardEdits() {
-  document.querySelectorAll(".task-card.is-editing").forEach((card) => card.classList.remove("is-editing"));
-  document.querySelectorAll(".task-card-edit").forEach((panel) => {
-    panel.hidden = true;
-  });
+let taskEditTrigger = null;
+let standupEditTrigger = null;
+
+function closeStandupEditModal(restoreFocus = true) {
+  const modal = document.getElementById("standup-edit-modal");
+  if (!modal || modal.hidden) return;
+  const taskId = document.getElementById("standup-edit-task-id")?.value;
+  const commentId = document.getElementById("standup-edit-id")?.value;
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+  if (restoreFocus) {
+    const currentRow = document.querySelector(
+      `.editable-standup-row[data-task-id="${taskId}"][data-id="${commentId}"]`
+    );
+    const focusTarget = currentRow || (standupEditTrigger?.isConnected ? standupEditTrigger : null);
+    if (focusTarget) global.requestAnimationFrame(() => focusTarget.focus());
+  }
+  standupEditTrigger = null;
 }
 
-function openTaskCardEdit(taskId) {
+function closeTaskCardEdits(restoreFocus = true) {
+  const modal = document.getElementById("task-edit-modal");
+  if (!modal || modal.hidden) return;
+  const taskId = modal.querySelector("[name='task_id']")?.value;
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("modal-open");
+  if (restoreFocus) {
+    const focusTarget = document.querySelector(`.task-edit-btn[data-id="${taskId}"]`)
+      || (taskEditTrigger?.isConnected ? taskEditTrigger : null);
+    if (focusTarget) global.requestAnimationFrame(() => focusTarget.focus());
+  }
+  taskEditTrigger = null;
+}
+
+function openTaskCardEdit(taskId, trigger) {
   const task = Syntra.state.taskCache.find((entry) => entry.id === taskId);
   if (!task) return;
   const card = document.querySelector(`.task-card[data-id="${taskId}"]`);
   if (!card) return;
   Syntra.ui.closeCreatePanel("task-create-panel");
-  Syntra.ui.closeCreatePanel("standup-edit-panel");
-  closeTaskCardEdits();
-  const panel = card.querySelector(".task-card-edit");
-  if (!panel) return;
-  panel.querySelector(".task-card-edit-status").value = task.status || "pending";
-  panel.querySelector(".task-card-edit-priority").value = task.priority || "medium";
-  panel.querySelector(".task-card-edit-assignee").value = task.assigned_to || "";
-  panel.querySelector(".task-card-edit-due").value = formatDateInput(task.due_date);
-  panel.hidden = false;
-  card.classList.add("is-editing");
-  const firstField = panel.querySelector("select, input");
+  closeStandupEditModal(false);
+  closeTaskCardEdits(false);
+  const modal = document.getElementById("task-edit-modal");
+  if (!modal) return;
+  modal.querySelector("[name='task_id']").value = task.id;
+  modal.querySelector("[name='title']").value = task.title || "";
+  modal.querySelector("[name='status']").innerHTML = renderStandupStatusOptions(task.status || "pending");
+  modal.querySelector("[name='priority']").innerHTML = renderPriorityOptions(task.priority || "medium");
+  modal.querySelector("[name='assigned_to']").innerHTML = renderStandupMemberOptions(task.assigned_to);
+  modal.querySelector("[name='due_date']").value = formatDateInput(task.due_date);
+  taskEditTrigger = trigger?.matches("button") ? trigger : card.querySelector(".task-edit-btn");
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  const firstField = modal.querySelector("select, input:not([type='hidden'])");
   if (firstField) firstField.focus();
 }
 
 function openStandupEdit(taskId, comment) {
   Syntra.ui.closeCreatePanel("task-create-panel");
-  closeTaskCardEdits();
+  closeTaskCardEdits(false);
+  const modal = document.getElementById("standup-edit-modal");
+  if (!modal) return;
   document.getElementById("standup-edit-task-id").value = taskId;
   document.getElementById("standup-edit-id").value = comment.id;
-  document.getElementById("standup-edit-member").value = comment.assigned_to || "";
-  document.getElementById("standup-edit-status").value = comment.status || "in_progress";
+  document.getElementById("standup-edit-member").innerHTML = renderStandupMemberOptions(comment.assigned_to);
+  document.getElementById("standup-edit-status").innerHTML = renderStandupStatusOptions(comment.status || "in_progress");
   document.getElementById("standup-edit-comment").value = comment.comment || "";
-  Syntra.ui.highlightStandupRow(taskId, comment.id);
-  Syntra.ui.openEditPanel("standup-edit-panel", "standup-edit-comment");
+  standupEditTrigger = document.querySelector(
+    `.editable-standup-row[data-task-id="${taskId}"][data-id="${comment.id}"]`
+  );
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.classList.add("modal-open");
+  document.getElementById("standup-edit-comment").focus();
 }
 
 function openNoteEdit(note) {
@@ -1346,16 +1356,16 @@ async function updateTask(taskId, payload) {
   return task;
 }
 
-async function submitTaskCardEdit(taskId) {
-  const card = document.querySelector(`.task-card[data-id="${taskId}"]`);
-  if (!card) return;
-  const panel = card.querySelector(".task-card-edit");
-  if (!panel) return;
-  const assignee = panel.querySelector(".task-card-edit-assignee").value;
-  const dueDate = panel.querySelector(".task-card-edit-due").value;
+async function submitTaskCardEdit() {
+  const modal = document.getElementById("task-edit-modal");
+  if (!modal) return;
+  const taskId = parseInt(modal.querySelector("[name='task_id']").value, 10);
+  const assignee = modal.querySelector("[name='assigned_to']").value;
+  const dueDate = modal.querySelector("[name='due_date']").value;
   await updateTask(taskId, {
-    status: panel.querySelector(".task-card-edit-status").value,
-    priority: panel.querySelector(".task-card-edit-priority").value,
+    title: modal.querySelector("[name='title']").value.trim(),
+    status: modal.querySelector("[name='status']").value,
+    priority: modal.querySelector("[name='priority']").value,
     assigned_to: assignee ? parseInt(assignee, 10) : null,
     due_date: dueDate || null,
   });
@@ -1426,6 +1436,31 @@ function bindTaskListEvents() {
   if (!container || container.dataset.bound === "true") return;
   container.dataset.bound = "true";
 
+  const taskEditModal = document.getElementById("task-edit-modal");
+  const standupEditModal = document.getElementById("standup-edit-modal");
+  const taskEditForm = document.getElementById("task-edit-form");
+  taskEditForm?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    submitTaskCardEdit().catch((err) => Syntra.core.toast(err.message, true));
+  });
+  document.getElementById("task-edit-cancel")?.addEventListener("click", () => closeTaskCardEdits());
+  taskEditModal?.querySelectorAll("[data-task-edit-dismiss]").forEach((el) => {
+    el.addEventListener("click", () => closeTaskCardEdits());
+  });
+  document.getElementById("standup-edit-cancel")?.addEventListener("click", () => closeStandupEditModal());
+  standupEditModal?.querySelectorAll("[data-standup-edit-dismiss]").forEach((el) => {
+    el.addEventListener("click", () => closeStandupEditModal());
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && taskEditModal && !taskEditModal.hidden) {
+      event.preventDefault();
+      closeTaskCardEdits();
+    } else if (event.key === "Escape" && standupEditModal && !standupEditModal.hidden) {
+      event.preventDefault();
+      closeStandupEditModal();
+    }
+  });
+
   container.addEventListener("click", (event) => {
     const doneBtn = event.target.closest(".task-done-toggle");
     if (doneBtn) {
@@ -1454,21 +1489,7 @@ function bindTaskListEvents() {
     const editBtn = event.target.closest(".task-edit-btn");
     if (editBtn) {
       event.stopPropagation();
-      openTaskCardEdit(parseInt(editBtn.dataset.id, 10));
-      return;
-    }
-
-    const saveBtn = event.target.closest(".task-card-edit-save");
-    if (saveBtn) {
-      event.stopPropagation();
-      submitTaskCardEdit(parseInt(saveBtn.dataset.id, 10)).catch((err) => Syntra.core.toast(err.message, true));
-      return;
-    }
-
-    const cancelBtn = event.target.closest(".task-card-edit-cancel");
-    if (cancelBtn) {
-      event.stopPropagation();
-      closeTaskCardEdits();
+      openTaskCardEdit(parseInt(editBtn.dataset.id, 10), editBtn);
       return;
     }
 
@@ -1490,7 +1511,7 @@ function bindTaskListEvents() {
   });
 
   container.addEventListener("dblclick", (event) => {
-    if (event.target.closest("button, input, select, textarea, .task-card-edit")) {
+    if (event.target.closest("button, input, select, textarea")) {
       return;
     }
 
@@ -1498,6 +1519,7 @@ function bindTaskListEvents() {
     if (standupRow) {
       event.stopPropagation();
       const taskId = parseInt(standupRow.dataset.taskId, 10);
+      if (!canEditStandupUpdate(taskId)) return;
       const commentId = parseInt(standupRow.dataset.id, 10);
       const comment = (Syntra.state.taskCommentsCache[taskId] || []).find((entry) => entry.id === commentId);
       if (comment) openStandupEdit(taskId, comment);
@@ -1507,7 +1529,7 @@ function bindTaskListEvents() {
     const card = event.target.closest(".task-card");
     if (!card) return;
     const task = Syntra.state.taskCache.find((entry) => String(entry.id) === card.dataset.id);
-    if (task) openTaskCardEdit(task.id);
+    if (task) openTaskCardEdit(task.id, card.querySelector(".task-edit-btn"));
   });
 
   container.addEventListener("submit", (event) => {
@@ -2020,6 +2042,6 @@ async function addReminder(payload) {
   return reminder;
 }
 
-  Syntra.tasks = { renderTaskGroupCopyButton, ensureTaskComments, formatCommentsPlain, formatCommentsHtml, renderStandupStatusOptions, renderStandupMemberOptions, getDefaultStandupMemberId, updateStandupPanelHeader, buildGroupTasksClipboardPlain, buildGroupTasksClipboardHtml, copyHtmlToClipboard, isStandupUpdateToday, prefetchTaskCommentsForSummary, collectTodayStandupUpdates, renderStandupSummary, buildStandupSummaryClipboardPlain, buildStandupSummaryClipboardHtml, refreshStandupSummary, copyAllStandupsToday, initStandupSummary, openTaskFromSummary, copyTaskGroup, handleTaskGroupCopyClick, updateAssigneeOptions, updateGroupOptions, syncTaskGroupNewField, loadTaskGroups, resolveCreateGroupPayload, groupTasksByGroup, renderTaskGroupBlock, renderArchivedTaskRow, renderArchivedGroupBlock, toggleTaskGroup, archiveTaskGroup, restoreArchivedGroup, deleteArchivedGroup, bindTaskGroupEvents, bindArchiveGroupEvents, renderTaskCard, renderPriorityOptions, getTaskInitials, loadTaskComments, renderTaskCommentsList, toggleStandupBody, updateTaskCommentCount, toggleTaskComments, addTaskComment, deleteTaskComment, updateStandupComment, closeTaskCardEdits, openTaskCardEdit, openStandupEdit, openNoteEdit, openTeamEdit, openReminderEdit, markTaskDone, updateTask, deleteTask, updateNote, deleteNote, updateTeamMember, deleteTeamMember, updateReminder, deleteReminder, bindTaskListEvents, bindNoteListEvents, bindTeamListEvents, bindReminderListEvents, initCreatePanels, loadTasks, renderTasksFromCache, loadNotes, renderNotesFromCache, loadTeam, renderTeamFromCache, loadReminders, loadArchivedGroups, loadDashboard, addTask, addNote, addTeamMember, addReminder, getFocusTasks, renderFocusNow };
+  Syntra.tasks = { renderTaskGroupCopyButton, ensureTaskComments, formatCommentsPlain, formatCommentsHtml, renderStandupStatusOptions, renderStandupMemberOptions, getDefaultStandupMemberId, updateStandupPanelHeader, canEditStandupUpdate, buildGroupTasksClipboardPlain, buildGroupTasksClipboardHtml, copyHtmlToClipboard, isStandupUpdateToday, prefetchTaskCommentsForSummary, collectTodayStandupUpdates, renderStandupSummary, buildStandupSummaryClipboardPlain, buildStandupSummaryClipboardHtml, refreshStandupSummary, copyAllStandupsToday, initStandupSummary, openTaskFromSummary, copyTaskGroup, handleTaskGroupCopyClick, updateAssigneeOptions, updateGroupOptions, syncTaskGroupNewField, loadTaskGroups, resolveCreateGroupPayload, groupTasksByGroup, renderTaskGroupBlock, renderArchivedTaskRow, renderArchivedGroupBlock, toggleTaskGroup, archiveTaskGroup, restoreArchivedGroup, deleteArchivedGroup, bindTaskGroupEvents, bindArchiveGroupEvents, renderTaskCard, renderPriorityOptions, getTaskInitials, loadTaskComments, renderTaskCommentsList, toggleStandupBody, updateTaskCommentCount, toggleTaskComments, addTaskComment, deleteTaskComment, updateStandupComment, closeTaskCardEdits, openTaskCardEdit, openStandupEdit, openNoteEdit, openTeamEdit, openReminderEdit, markTaskDone, updateTask, deleteTask, updateNote, deleteNote, updateTeamMember, deleteTeamMember, updateReminder, deleteReminder, bindTaskListEvents, bindNoteListEvents, bindTeamListEvents, bindReminderListEvents, initCreatePanels, loadTasks, renderTasksFromCache, loadNotes, renderNotesFromCache, loadTeam, renderTeamFromCache, loadReminders, loadArchivedGroups, loadDashboard, addTask, addNote, addTeamMember, addReminder, getFocusTasks, renderFocusNow };
 
 })(window);

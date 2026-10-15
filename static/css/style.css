@@ -1489,91 +1489,119 @@ body {
   text-align: center;
 }
 
-/* Inline edit panel inside card */
-.task-card-edit {
-  padding: 1rem 1rem 0.875rem;
-  background: var(--primary-soft);
-  border-top: 1px dashed var(--primary);
-}
-
-.task-card-edit[hidden] { display: none; }
-
-.task-card-edit-grid {
-  display: flex;
-  flex-wrap: wrap;
+/* Task comment form */
+.task-comment-form {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.85fr) minmax(125px, 0.7fr) minmax(180px, 1.5fr) auto;
+  align-items: center;
   gap: 0.625rem;
-  align-items: flex-end;
-}
-
-.task-card-edit-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  flex: 1 1 130px;
-}
-
-.task-card-edit-label {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.task-card-edit-input {
-  padding: 0.4rem 0.5rem;
-  border: 1px solid var(--border);
+  padding: 0.875rem;
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   background: var(--surface);
-  color: var(--text);
-  font-size: 0.8125rem;
-  font-family: inherit;
-  transition: border-color var(--transition);
 }
 
-.task-card-edit-input:focus {
+.task-comment-form .standup-member-select,
+.task-comment-form .standup-status-select,
+.task-comment-form .standup-comment-input,
+.standup-edit-form .standup-select,
+.standup-edit-form .standup-edit-comment {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 0.875rem;
+}
+
+.task-comment-form .standup-member-select,
+.task-comment-form .standup-status-select,
+.standup-edit-form .standup-select {
+  appearance: none;
+  padding-right: 2rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--text-muted) 50%),
+    linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 14px) 50%,
+    calc(100% - 9px) 50%;
+  background-repeat: no-repeat;
+  background-size: 5px 5px;
+}
+
+.standup-edit-form .standup-edit-comment {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.task-comment-form .standup-member-select:focus,
+.task-comment-form .standup-status-select:focus,
+.task-comment-form .standup-comment-input:focus,
+.standup-edit-form .standup-select:focus,
+.standup-edit-form .standup-edit-comment:focus {
   outline: none;
   border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
 }
 
-.task-card-edit-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(124, 58, 237, 0.15);
+.task-comment-form .standup-comment-input::placeholder {
+  color: var(--text-muted);
 }
 
-.task-card-edit-save {
-  padding: 0.4rem 1rem;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  border-radius: var(--radius-sm);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--transition);
+.task-comment-form .inline-submit {
+  min-height: 40px;
+  white-space: nowrap;
 }
 
-.task-card-edit-save:hover { background: var(--primary-hover); }
-
-.task-card-edit-cancel {
-  padding: 0.4rem 0.875rem;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
-  border-radius: var(--radius-sm);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background var(--transition);
+.task-edit-modal-dialog {
+  width: min(100%, 520px);
 }
 
-.task-card-edit-cancel:hover { background: var(--bg-subtle); }
+.standup-edit-modal-dialog {
+  width: min(100%, 560px);
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+}
+
+@media (max-width: 720px) {
+  .task-comment-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .task-comment-form .standup-comment-input {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .task-comment-form .inline-submit {
+    grid-column: 2;
+    justify-self: end;
+  }
+}
+
+@media (max-width: 420px) {
+  .task-comment-form {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.65rem;
+  }
+
+  .task-comment-form .standup-comment-input,
+  .task-comment-form .inline-submit {
+    grid-column: 1;
+  }
+
+  .task-comment-form .standup-comment-input {
+    grid-row: auto;
+  }
+
+  .task-comment-form .inline-submit {
+    justify-self: stretch;
+  }
+}
 
 /* Dark mode overrides */
 [data-theme="dark"] .task-chip--low { background: #1e293b; color: #cbd5e1; }
@@ -2077,7 +2105,7 @@ body {
   vertical-align: middle;
 }
 
-.task-comments-btn {
+.actions-cell .task-comments-btn {
   align-items: center;
   justify-content: center;
   gap: 0.25rem;
@@ -2095,18 +2123,18 @@ body {
   font-family: inherit;
 }
 
-.task-comments-btn:hover {
+.actions-cell .task-comments-btn:hover {
   background: var(--primary-light);
   border-color: var(--primary-light);
   color: var(--primary);
 }
 
-.task-comments-icon {
+.actions-cell .task-comments-icon {
   font-size: 0.875rem;
   line-height: 1;
 }
 
-.task-comments-count {
+.actions-cell .task-comments-count {
   font-weight: 600;
 }
 
