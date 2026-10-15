@@ -2596,7 +2596,7 @@ tr:last-child td {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(100%, 720px);
+  width: min(100%, 1100px);
   max-height: min(84vh, 780px);
   overflow: hidden;
   background: var(--surface);
@@ -2641,7 +2641,7 @@ tr:last-child td {
 }
 
 .weekly-leave-modal-content {
-  overflow-y: auto;
+  overflow: auto;
   padding: 0.5rem 1.5rem 1rem;
 }
 
@@ -2652,33 +2652,43 @@ tr:last-child td {
   text-align: center;
 }
 
+.weekly-leave-days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-width: 910px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
 .weekly-leave-day {
-  padding: 0.875rem 0;
-  border-bottom: 1px solid var(--border-light);
+  min-width: 0;
+  min-height: 190px;
+  padding: 0.75rem 0.55rem;
+  border-right: 1px solid var(--border-light);
+  background: var(--surface);
 }
 
 .weekly-leave-day:last-child {
-  border-bottom: 0;
+  border-right: 0;
 }
 
 .weekly-leave-day.is-today {
-  margin-inline: -0.75rem;
-  padding-inline: 0.75rem;
-  border-left: 3px solid var(--primary);
   background: var(--primary-light);
+  box-shadow: inset 0 3px 0 var(--primary);
 }
 
 .weekly-leave-day-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.55rem;
+  margin: 0 0 0.35rem;
   color: var(--text-primary);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 700;
+  white-space: nowrap;
 }
 
 .weekly-leave-today-label {
+  display: inline-block;
+  margin-bottom: 0.55rem;
   color: var(--primary);
   font-size: 0.6875rem;
   font-weight: 700;
@@ -2687,14 +2697,15 @@ tr:last-child td {
 
 .weekly-leave-day-entries {
   display: grid;
-  gap: 0.4rem;
+  align-content: start;
+  gap: 0.35rem;
 }
 
 .weekly-leave-entry {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.2rem 0.75rem;
-  padding: 0.55rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.45rem;
   border: 1px solid var(--border-light);
   border-radius: var(--radius-sm);
   background: var(--bg);
@@ -2703,28 +2714,21 @@ tr:last-child td {
 .weekly-leave-entry-name {
   min-width: 0;
   color: var(--text-primary);
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   overflow-wrap: anywhere;
 }
 
-.weekly-leave-entry-range {
-  color: var(--text-muted);
-  font-size: 0.8125rem;
-  text-align: right;
-}
-
 .weekly-leave-entry-details {
-  grid-column: 1 / -1;
   color: var(--text-secondary);
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
   overflow-wrap: anywhere;
 }
 
 .weekly-leave-day-empty {
   margin: 0;
   color: var(--text-muted);
-  font-size: 0.8125rem;
+  font-size: 0.6875rem;
 }
 
 /* Confirm modal */

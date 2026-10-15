@@ -279,7 +279,7 @@
       .map((dateStr) => {
         const dayPlans = onLeaveOn(plans, dateStr);
         const dayLabel = parseDate(dateStr).toLocaleDateString(undefined, {
-          weekday: "long",
+          weekday: "short",
           month: "short",
           day: "numeric",
         });
@@ -290,14 +290,14 @@
                 const memberName = plan.member_name || (member && member.name) || "Member";
                 return `<article class="weekly-leave-entry">
                   <span class="weekly-leave-entry-name">${escapeHtml(memberName)}</span>
-                  <span class="weekly-leave-entry-range">${escapeHtml(formatRange(plan.start_date, plan.end_date))}</span>
                   ${plan.details ? `<span class="weekly-leave-entry-details">${escapeHtml(plan.details)}</span>` : ""}
                 </article>`;
               })
               .join("")
           : '<p class="weekly-leave-day-empty">No planned leave</p>';
-        return `<section class="weekly-leave-day${dateStr === today ? " is-today" : ""}">
-          <h3 class="weekly-leave-day-title">${escapeHtml(dayLabel)}${dateStr === today ? ' <span class="weekly-leave-today-label">Today</span>' : ""}</h3>
+        return `<section class="weekly-leave-day${dateStr === today ? " is-today" : ""}" aria-label="${escapeHtml(dayLabel)}">
+          <h3 class="weekly-leave-day-title">${escapeHtml(dayLabel)}</h3>
+          ${dateStr === today ? '<span class="weekly-leave-today-label">Today</span>' : ""}
           <div class="weekly-leave-day-entries">${entries}</div>
         </section>`;
       })
