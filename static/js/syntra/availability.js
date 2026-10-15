@@ -8,6 +8,7 @@
 
   let menuEl = null;
   let activeConfigBtn = null;
+  let weeklyLeaveTrigger = null;
 
   const viewState = {
     mode: "today", // "today" | "month"
@@ -21,6 +22,32 @@
 
   function todayString() {
     return global.SyntraDateTime.localDateString();
+  }
+
+  function localDateValue(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function currentWeekDates(referenceDate = new Date()) {
+    const monday = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), referenceDate.getDate());
+    monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    return Array.from({ length: 7 }, (_, offset) => {
+      const date = new Date(monday);
+      date.setDate(monday.getDate() + offset);
+      return localDateValue(date);
+    });
+  }
+
+  function plansForWeek(plans, weekDates) {
+    if (!weekDates || weekDates.length !== 7) return [];
+    const weekStart = weekDates[0];
+    const weekEnd = weekDates[6];
+    return (plans || []).filter(
+      (plan) => plan.start_date <= weekEnd && plan.end_date >= weekStart
+    );
   }
 
   function parseDate(dateStr) {
@@ -78,6 +105,7 @@
 
   async function loadLeavePlans() {
     Syntra.state.leavePlanCache = await Syntra.core.request(Syntra.constants.API.leavePlans);
+    renderWeeklyLeavePreview();
     renderIfVisible();
     return Syntra.state.leavePlanCache;
   }
@@ -203,6 +231,98 @@
       return;
     }
     renderMonth();
+  }
+
+  function formatWeekRange(weekDates) {
+    const start = parseDate(weekDates[0]);
+    const end = parseDate(weekDates[6]);
+    return `${start.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${end.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`;
+  }
+
+  function renderWeeklyLeavePreview() {
+    const weekDates = currentWeekDates();
+    const plans = plansForWeek(Syntra.state.leavePlanCache, weekDates);
+    const weekLabel = formatWeekRange(weekDates);
+    const summary = document.getElementById("weekly-leave-summary");
+    const range = document.getElementById("weekly-leave-week-label");
+
+    if (range) range.textContent = weekLabel;
+    if (summary) {
+      const memberCount = new Set(plans.map((plan) => plan.team_member_id)).size;
+      if (!plans.length) summary.textContent = "No planned team leave this week.";
+      else {
+        const planLabel = plans.length === 1 ? "leave plan" : "leave plans";
+        const memberLabel = memberCount === 1 ? "team member" : "team members";
+        summary.textContent = `${plans.length} ${planLabel} across ${memberCount} ${memberLabel}.`;
+      }
+    }
+
+    const modal = document.getElementById("weekly-leave-modal");
+    if (modal && !modal.hidden) renderWeeklyLeaveModal();
+  }
+
+  function renderWeeklyLeaveModal() {
+    const content = document.getElementById("weekly-leave-modal-content");
+    const range = document.getElementById("weekly-leave-modal-week");
+    if (!content) return;
+
+    const weekDates = currentWeekDates();
+    const plans = plansForWeek(Syntra.state.leavePlanCache, weekDates);
+    if (range) range.textContent = formatWeekRange(weekDates);
+    if (!plans.length) {
+      content.innerHTML = '<p class="weekly-leave-empty">No planned leave this week.</p>';
+      return;
+    }
+
+    const today = todayString();
+    content.innerHTML = `<div class="weekly-leave-days">${weekDates
+      .map((dateStr) => {
+        const dayPlans = onLeaveOn(plans, dateStr);
+        const dayLabel = parseDate(dateStr).toLocaleDateString(undefined, {
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+        });
+        const entries = dayPlans.length
+          ? dayPlans
+              .map((plan) => {
+                const member = findMember(plan.team_member_id);
+                const memberName = plan.member_name || (member && member.name) || "Member";
+                return `<article class="weekly-leave-entry">
+                  <span class="weekly-leave-entry-name">${escapeHtml(memberName)}</span>
+                  <span class="weekly-leave-entry-range">${escapeHtml(formatRange(plan.start_date, plan.end_date))}</span>
+                  ${plan.details ? `<span class="weekly-leave-entry-details">${escapeHtml(plan.details)}</span>` : ""}
+                </article>`;
+              })
+              .join("")
+          : '<p class="weekly-leave-day-empty">No planned leave</p>';
+        return `<section class="weekly-leave-day${dateStr === today ? " is-today" : ""}">
+          <h3 class="weekly-leave-day-title">${escapeHtml(dayLabel)}${dateStr === today ? ' <span class="weekly-leave-today-label">Today</span>' : ""}</h3>
+          <div class="weekly-leave-day-entries">${entries}</div>
+        </section>`;
+      })
+      .join("")}</div>`;
+  }
+
+  function openWeeklyLeaveModal(trigger) {
+    const modal = document.getElementById("weekly-leave-modal");
+    if (!modal) return;
+    weeklyLeaveTrigger = trigger || document.activeElement;
+    renderWeeklyLeaveModal();
+    modal.hidden = false;
+    modal.setAttribute("aria-hidden", "false");
+    document.body.classList.add("modal-open");
+    document.getElementById("weekly-leave-close")?.focus();
+  }
+
+  function closeWeeklyLeaveModal() {
+    const modal = document.getElementById("weekly-leave-modal");
+    if (!modal || modal.hidden) return;
+    modal.hidden = true;
+    modal.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("modal-open");
+    weeklyLeaveTrigger?.focus();
+    weeklyLeaveTrigger = null;
   }
 
   function renderDateLists(dateStr, container) {
@@ -435,8 +555,21 @@
     });
 
     document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") closeMenu();
+      if (event.key === "Escape") {
+        closeMenu();
+        closeWeeklyLeaveModal();
+      }
     });
+
+    const weeklyLeaveOpen = document.getElementById("weekly-leave-view");
+    const weeklyLeaveModal = document.getElementById("weekly-leave-modal");
+    const weeklyLeaveClose = document.getElementById("weekly-leave-close");
+    weeklyLeaveOpen?.addEventListener("click", () => openWeeklyLeaveModal(weeklyLeaveOpen));
+    weeklyLeaveClose?.addEventListener("click", closeWeeklyLeaveModal);
+    weeklyLeaveModal?.querySelectorAll("[data-weekly-leave-dismiss]").forEach((el) => {
+      el.addEventListener("click", closeWeeklyLeaveModal);
+    });
+    renderWeeklyLeavePreview();
 
     document.querySelectorAll(".team-tab-btn").forEach((btn) => {
       btn.addEventListener("click", () => switchTab(btn.dataset.tab));
@@ -544,8 +677,13 @@
     renderIfVisible,
     openLeaveForm,
     openLeaveList,
+    renderWeeklyLeavePreview,
+    openWeeklyLeaveModal,
+    closeWeeklyLeaveModal,
     onLeaveOn,
     availableOn,
     initialsFor,
+    currentWeekDates,
+    plansForWeek,
   };
 })(window);

@@ -121,6 +121,17 @@
             </div>
           </section>
 
+          <section class="section weekly-leave-overview" aria-labelledby="weekly-leave-title">
+            <div class="weekly-leave-overview-main">
+              <h2 class="section-title" id="weekly-leave-title">Team leave this week</h2>
+              <p class="weekly-leave-summary" id="weekly-leave-summary">Loading planned leave...</p>
+            </div>
+            <div class="weekly-leave-overview-actions">
+              <span class="weekly-leave-week-label" id="weekly-leave-week-label"></span>
+              <button type="button" class="weekly-leave-view-btn" id="weekly-leave-view">View</button>
+            </div>
+          </section>
+
           <section class="section section-collapsible" id="focus-now" data-default-expanded="true">
             <div class="section-header">
               <button type="button" class="section-collapse-btn" aria-label="Collapse Focus Now section" aria-expanded="true">
@@ -620,6 +631,26 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div id="weekly-leave-modal" class="weekly-leave-modal" hidden aria-hidden="true">
+    <div class="weekly-leave-backdrop" data-weekly-leave-dismiss></div>
+    <section
+      class="weekly-leave-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="weekly-leave-modal-title"
+      aria-describedby="weekly-leave-modal-week"
+    >
+      <header class="weekly-leave-modal-header">
+        <div>
+          <h2 class="weekly-leave-modal-title" id="weekly-leave-modal-title">Team leave this week</h2>
+          <p class="weekly-leave-modal-week" id="weekly-leave-modal-week"></p>
+        </div>
+        <button type="button" class="weekly-leave-close" id="weekly-leave-close" aria-label="Close weekly leave view">Close</button>
+      </header>
+      <div class="weekly-leave-modal-content" id="weekly-leave-modal-content" aria-live="polite"></div>
+    </section>
   </div>
 
   <div id="reminder-popup-stack" class="reminder-popup-stack" aria-live="polite"></div>

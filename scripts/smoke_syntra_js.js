@@ -185,7 +185,7 @@ console.log("OK: Syntra namespace loaded, initApp ran without error");
 
 // Pure availability helper checks (spec: single-day hit, range covering a day,
 // misses before/after, month-boundary span, availability exclusion, initials).
-const { onLeaveOn, availableOn, initialsFor } = window.Syntra.availability;
+const { onLeaveOn, availableOn, initialsFor, currentWeekDates, plansForWeek } = window.Syntra.availability;
 const leaves = [
   { id: 1, team_member_id: 1, start_date: "2026-10-12", end_date: "2026-10-12" },
   { id: 2, team_member_id: 2, start_date: "2026-09-30", end_date: "2026-10-02" },
@@ -209,6 +209,13 @@ const checks = [
   [availableOn(members, leaves, "2026-10-15").length === 4, "everyone is available on a clear day"],
   [initialsFor("Ada Lovelace") === "AL", "initials from two words"],
   [initialsFor("Grace") === "GR", "initials from one word"],
+  [currentWeekDates(new Date(2026, 9, 15)).join(",") === "2026-10-12,2026-10-13,2026-10-14,2026-10-15,2026-10-16,2026-10-17,2026-10-18", "current week is Monday-first"],
+  [currentWeekDates(new Date(2026, 9, 18))[0] === "2026-10-12", "Sunday belongs to the preceding Monday-first week"],
+  [plansForWeek([
+    { id: 1, start_date: "2026-10-10", end_date: "2026-10-12" },
+    { id: 2, start_date: "2026-10-18", end_date: "2026-10-20" },
+    { id: 3, start_date: "2026-10-19", end_date: "2026-10-20" },
+  ], currentWeekDates(new Date(2026, 9, 15))).map((plan) => plan.id).join(",") === "1,2", "week includes leave overlapping either boundary"],
 ];
 const failed = checks.filter(([ok]) => !ok);
 if (failed.length) {

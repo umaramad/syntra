@@ -380,6 +380,54 @@ body {
   margin-bottom: 1.75rem;
 }
 
+.weekly-leave-overview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding: 1.125rem 1.25rem;
+  margin-bottom: 1.75rem;
+}
+
+.weekly-leave-overview-main {
+  min-width: 0;
+}
+
+.weekly-leave-overview .section-title {
+  margin: 0 0 0.35rem;
+}
+
+.weekly-leave-summary,
+.weekly-leave-week-label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.weekly-leave-overview-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.875rem;
+  flex-shrink: 0;
+}
+
+.weekly-leave-view-btn {
+  padding: 0.5rem 0.875rem;
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-sm);
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.weekly-leave-view-btn:hover {
+  filter: brightness(1.05);
+}
+
 .stat-card {
   background: var(--surface);
   border: 1px solid var(--border-light);
@@ -2520,6 +2568,163 @@ tr:last-child td {
 
 .profile-modal-save:hover {
   filter: brightness(1.05);
+}
+
+/* Weekly team leave modal */
+
+.weekly-leave-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.weekly-leave-modal[hidden] {
+  display: none;
+}
+
+.weekly-leave-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(3px);
+}
+
+.weekly-leave-dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100%, 720px);
+  max-height: min(84vh, 780px);
+  overflow: hidden;
+  background: var(--surface);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.weekly-leave-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.weekly-leave-modal-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.weekly-leave-modal-week {
+  margin: 0.3rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.weekly-leave-close {
+  flex-shrink: 0;
+  padding: 0.4rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.weekly-leave-modal-content {
+  overflow-y: auto;
+  padding: 0.5rem 1.5rem 1rem;
+}
+
+.weekly-leave-empty {
+  margin: 1rem 0;
+  padding: 1.5rem 0;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.weekly-leave-day {
+  padding: 0.875rem 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.weekly-leave-day:last-child {
+  border-bottom: 0;
+}
+
+.weekly-leave-day.is-today {
+  margin-inline: -0.75rem;
+  padding-inline: 0.75rem;
+  border-left: 3px solid var(--primary);
+  background: var(--primary-light);
+}
+
+.weekly-leave-day-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.55rem;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.weekly-leave-today-label {
+  color: var(--primary);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.weekly-leave-day-entries {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.weekly-leave-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+}
+
+.weekly-leave-entry-name {
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.weekly-leave-entry-range {
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  text-align: right;
+}
+
+.weekly-leave-entry-details {
+  grid-column: 1 / -1;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  overflow-wrap: anywhere;
+}
+
+.weekly-leave-day-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
 }
 
 /* Confirm modal */
